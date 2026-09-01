@@ -1,0 +1,6 @@
+{
+  "name": "Expense Tracker",
+  "description": "A complete offline-ready Expense Tracker PWA with multi-profile support, wallet tracking, monthly ledgers, budgets, savings goals, financial planning, smart insights, and analytics in PKR.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
