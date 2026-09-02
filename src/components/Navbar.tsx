@@ -14,7 +14,9 @@ import {
   Check,
   Sparkles,
   Download,
-  LogOut
+  LogOut,
+  Cloud,
+  RefreshCw,
 } from 'lucide-react';
 import { formatPKR } from '../lib/formatters';
 
@@ -42,6 +44,8 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenStartFresh }) => {
     setIsSearchOpen,
     setIsAddTxOpen,
     setActiveTab,
+    firebaseStatus,
+    syncToFirebase,
   } = useExpense();
 
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
@@ -225,6 +229,44 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenStartFresh }) => {
             {isOnline ? <Wifi className="h-3.5 w-3.5" /> : <WifiOff className="h-3.5 w-3.5" />}
             <span>{isOnline ? 'Online' : 'Offline'}</span>
           </div>
+
+          {/* Firebase Cloud Sync status badge */}
+          {firebaseStatus?.isConfigured && (
+            <button
+              id="firebase-cloud-sync-btn"
+              onClick={() => {
+                if (!firebaseStatus.isSyncing) {
+                  syncToFirebase();
+                }
+              }}
+              title={
+                firebaseStatus.isSyncing
+                  ? "Syncing to Firebase Cloud..."
+                  : firebaseStatus.isConnected
+                  ? `Firebase Cloud Synced (${firebaseStatus.projectId}) • Click to force sync`
+                  : "Connecting to Firebase..."
+              }
+              className={`hidden sm:flex items-center gap-1.5 rounded-2xl px-3 py-1.5 text-[11px] font-medium border transition-all ${
+                firebaseStatus.isSyncing
+                  ? 'bg-purple-500/15 text-purple-700 dark:text-purple-300 border-purple-500/30'
+                  : firebaseStatus.isConnected
+                  ? 'bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-500/20 hover:bg-blue-500/15'
+                  : 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/25'
+              }`}
+            >
+              {firebaseStatus.isSyncing ? (
+                <RefreshCw className="h-3.5 w-3.5 animate-spin text-purple-600 dark:text-purple-400" />
+              ) : (
+                <div className="relative">
+                  <Cloud className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                  <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-emerald-500 ring-1 ring-white dark:ring-slate-900" />
+                </div>
+              )}
+              <span className="hidden lg:inline">
+                {firebaseStatus.isSyncing ? 'Syncing...' : 'Firebase Synced'}
+              </span>
+            </button>
+          )}
 
           {/* Notification Center */}
           <div className="relative">

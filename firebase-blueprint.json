@@ -1,0 +1,42 @@
+{
+  "entities": {
+    "UserAccount": {
+      "collection": "accounts",
+      "fields": {
+        "id": { "type": "string", "description": "Account identifier" },
+        "name": { "type": "string", "description": "Display name" },
+        "username": { "type": "string", "description": "Unique username" },
+        "email": { "type": "string", "description": "User email address" },
+        "avatar": { "type": "string", "description": "Avatar image URL" },
+        "is_owner": { "type": "boolean", "description": "Whether this is the owner account" },
+        "created_at": { "type": "string", "description": "Creation timestamp ISO string" }
+      }
+    },
+    "AccountFinancialData": {
+      "collection": "accountData",
+      "fields": {
+        "accountId": { "type": "string", "description": "Foreign key pointing to the user account" },
+        "updatedAt": { "type": "string", "description": "Last updated ISO timestamp" },
+        "profiles": { "type": "array", "description": "Profiles list" },
+        "activeProfileId": { "type": "string", "description": "Currently active profile ID" },
+        "wallets": { "type": "array", "description": "User wallets and account balances" },
+        "categories": { "type": "array", "description": "Expense and income categories" },
+        "transactions": { "type": "array", "description": "All logged transactions" },
+        "budgets": { "type": "array", "description": "Monthly and category budgets" },
+        "savingsGoals": { "type": "array", "description": "Active savings goals" },
+        "bills": { "type": "array", "description": "Recurring and one-off utility bills" },
+        "ledgers": { "type": "array", "description": "Monthly financial ledgers and statements" }
+      }
+    }
+  },
+  "rules": {
+    "accounts": {
+      "read": "true",
+      "write": "true"
+    },
+    "accountData": {
+      "read": "true",
+      "write": "true"
+    }
+  }
+}

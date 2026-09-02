@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useMemo, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useRef, useCallback, ReactNode } from 'react';
 import {
   UserAccount,
   UserProfile,
@@ -25,6 +25,17 @@ import {
   INITIAL_LEDGERS,
 } from '../lib/initialData';
 import { formatPKR, formatMonthYear } from '../lib/formatters';
+import {
+  pushAccountDataToFirebase,
+  pullAccountDataFromFirebase,
+  subscribeToFirebaseAccountData,
+  pushUserAccountToFirebase,
+  fetchAccountsFromFirebase,
+  isFirebaseConfigured,
+  getFirebaseMetadata,
+  FirebaseSyncStatus,
+  FirebaseAccountFinancialData,
+} from '../lib/firebase';
 
 export interface StartingWalletInput {
   name: string;
@@ -157,6 +168,11 @@ interface ExpenseContextType {
   loadDemoData: () => void;
   resetAllToDefault: () => void;
   resetToInitialData: () => void;
+
+  // Firebase Real-time Cloud Integration
+  firebaseStatus: FirebaseSyncStatus;
+  syncToFirebase: () => Promise<boolean>;
+  pullFromFirebase: () => Promise<boolean>;
 }
 
 const ExpenseContext = createContext<ExpenseContextType | undefined>(undefined);
@@ -524,6 +540,207 @@ export const ExpenseProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
   }, [profiles, activeProfileId, allWallets, categories, allTransactions, allBudgets, allSavingsGoals, allBills, allLedgers, currentAccount]);
 
+  // Firebase Real-time Cloud Integration State
+  const [firebaseStatus, setFirebaseStatus] = useState<FirebaseSyncStatus>(() => ({
+    isConfigured: isFirebaseConfigured(),
+    isConnected: isFirebaseConfigured(),
+    isSyncing: false,
+    lastSyncedAt: localStorage.getItem('expensepk_firebase_last_synced') || null,
+    error: null,
+    projectId: getFirebaseMetadata().projectId,
+    databaseId: getFirebaseMetadata().databaseId,
+  }));
+
+  const isApplyingRemoteUpdateRef = useRef<boolean>(false);
+  const lastLocalChangeTimestampRef = useRef<number>(Date.now());
+
+  // Manual or programmatic Push to Firebase Firestore
+  const syncToFirebase = useCallback(async (): Promise<boolean> => {
+    if (!currentAccount || !isFirebaseConfigured()) return false;
+    setFirebaseStatus(prev => ({ ...prev, isSyncing: true, error: null }));
+    try {
+      const payload: FirebaseAccountFinancialData = {
+        profiles,
+        activeProfileId,
+        wallets: allWallets,
+        categories,
+        transactions: allTransactions,
+        budgets: allBudgets,
+        savingsGoals: allSavingsGoals,
+        bills: allBills,
+        ledgers: allLedgers,
+      };
+
+      const res = await pushAccountDataToFirebase(currentAccount.id, payload);
+      if (res.success) {
+        const nowIso = new Date().toISOString();
+        localStorage.setItem('expensepk_firebase_last_synced', nowIso);
+        setFirebaseStatus(prev => ({
+          ...prev,
+          isSyncing: false,
+          isConnected: true,
+          lastSyncedAt: nowIso,
+          error: null,
+        }));
+        await pushUserAccountToFirebase(currentAccount);
+        return true;
+      } else {
+        setFirebaseStatus(prev => ({
+          ...prev,
+          isSyncing: false,
+          error: res.error || 'Failed to sync to Firebase Firestore',
+        }));
+        return false;
+      }
+    } catch (err: any) {
+      setFirebaseStatus(prev => ({
+        ...prev,
+        isSyncing: false,
+        error: err?.message || 'Sync error',
+      }));
+      return false;
+    }
+  }, [currentAccount, profiles, activeProfileId, allWallets, categories, allTransactions, allBudgets, allSavingsGoals, allBills, allLedgers]);
+
+  // Manual or programmatic Pull / Hydrate from Firebase Firestore
+  const pullFromFirebase = useCallback(async (): Promise<boolean> => {
+    if (!currentAccount || !isFirebaseConfigured()) return false;
+    setFirebaseStatus(prev => ({ ...prev, isSyncing: true, error: null }));
+    try {
+      const res = await pullAccountDataFromFirebase(currentAccount.id);
+      if (res.success && res.data) {
+        isApplyingRemoteUpdateRef.current = true;
+        if (res.data.profiles?.length) setProfiles(res.data.profiles);
+        if (res.data.activeProfileId) setActiveProfileId(res.data.activeProfileId);
+        if (res.data.wallets) setAllWallets(res.data.wallets);
+        if (res.data.categories?.length) setCategories(res.data.categories);
+        if (res.data.transactions) setAllTransactions(res.data.transactions);
+        if (res.data.budgets) setAllBudgets(res.data.budgets);
+        if (res.data.savingsGoals) setAllSavingsGoals(res.data.savingsGoals);
+        if (res.data.bills) setAllBills(res.data.bills);
+        if (res.data.ledgers) setAllLedgers(res.data.ledgers);
+
+        const nowIso = res.data.updatedAt || new Date().toISOString();
+        localStorage.setItem('expensepk_firebase_last_synced', nowIso);
+        setFirebaseStatus(prev => ({
+          ...prev,
+          isSyncing: false,
+          isConnected: true,
+          lastSyncedAt: nowIso,
+          error: null,
+        }));
+
+        setTimeout(() => {
+          isApplyingRemoteUpdateRef.current = false;
+        }, 300);
+        return true;
+      } else {
+        setFirebaseStatus(prev => ({
+          ...prev,
+          isSyncing: false,
+          error: res.error || 'No remote data found in Firestore',
+        }));
+        return false;
+      }
+    } catch (err: any) {
+      setFirebaseStatus(prev => ({
+        ...prev,
+        isSyncing: false,
+        error: err?.message || 'Pull error',
+      }));
+      return false;
+    }
+  }, [currentAccount]);
+
+  // Auto-sync debounced local changes to Firebase Firestore
+  useEffect(() => {
+    if (!currentAccount || !isFirebaseConfigured() || !isOnline) return;
+    if (isApplyingRemoteUpdateRef.current) return;
+
+    lastLocalChangeTimestampRef.current = Date.now();
+    const timer = setTimeout(() => {
+      syncToFirebase();
+    }, 1500);
+
+    return () => clearTimeout(timer);
+  }, [profiles, activeProfileId, allWallets, categories, allTransactions, allBudgets, allSavingsGoals, allBills, allLedgers, currentAccount, isOnline, syncToFirebase]);
+
+  // Real-time Firestore Subscription & Account Sync
+  useEffect(() => {
+    if (!currentAccount || !isFirebaseConfigured()) return;
+
+    // Discover / Sync accounts from Firestore
+    fetchAccountsFromFirebase().then(remoteAccounts => {
+      if (remoteAccounts && remoteAccounts.length > 0) {
+        setAccounts(prev => {
+          const merged = [...prev];
+          remoteAccounts.forEach(ra => {
+            const idx = merged.findIndex(a => a.id === ra.id);
+            if (idx >= 0) {
+              merged[idx] = { ...merged[idx], ...ra };
+            } else {
+              merged.push(ra);
+            }
+          });
+          localStorage.setItem(STORAGE_KEYS.ACCOUNTS, JSON.stringify(merged));
+          return merged;
+        });
+      }
+    }).catch(err => console.warn('Account sync check:', err));
+
+    // Register active account in Firestore
+    pushUserAccountToFirebase(currentAccount).catch(err => console.warn('User account sync:', err));
+
+    // Real-time Listener on the current account document in Firestore
+    const unsubscribe = subscribeToFirebaseAccountData(
+      currentAccount.id,
+      (remoteData) => {
+        // Prevent echo if this client pushed locally within 2.5s
+        if (Date.now() - lastLocalChangeTimestampRef.current < 2500) {
+          return;
+        }
+
+        if (remoteData && remoteData.wallets) {
+          isApplyingRemoteUpdateRef.current = true;
+          if (remoteData.profiles?.length) setProfiles(remoteData.profiles);
+          if (remoteData.activeProfileId) setActiveProfileId(remoteData.activeProfileId);
+          if (remoteData.wallets) setAllWallets(remoteData.wallets);
+          if (remoteData.categories?.length) setCategories(remoteData.categories);
+          if (remoteData.transactions) setAllTransactions(remoteData.transactions);
+          if (remoteData.budgets) setAllBudgets(remoteData.budgets);
+          if (remoteData.savingsGoals) setAllSavingsGoals(remoteData.savingsGoals);
+          if (remoteData.bills) setAllBills(remoteData.bills);
+          if (remoteData.ledgers) setAllLedgers(remoteData.ledgers);
+
+          const syncedAt = remoteData.updatedAt || new Date().toISOString();
+          localStorage.setItem('expensepk_firebase_last_synced', syncedAt);
+          setFirebaseStatus(prev => ({
+            ...prev,
+            isConnected: true,
+            lastSyncedAt: syncedAt,
+            error: null,
+          }));
+
+          setTimeout(() => {
+            isApplyingRemoteUpdateRef.current = false;
+          }, 400);
+        }
+      },
+      (error) => {
+        console.warn('Firestore subscription error:', error);
+        setFirebaseStatus(prev => ({
+          ...prev,
+          isConnected: false,
+          error: error.message,
+        }));
+      }
+    );
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, [currentAccount?.id]);
+
   // Active Profile & Filtered collections
   const activeProfile = useMemo(() => {
     return profiles.find(p => p.id === activeProfileId) || profiles[0] || INITIAL_PROFILES[0];
@@ -808,17 +1025,29 @@ export const ExpenseProvider: React.FC<{ children: ReactNode }> = ({ children })
     localStorage.setItem(STORAGE_KEYS.ACTIVE_ACCOUNT_ID, newId);
     setActiveTab('dashboard');
 
+    pushUserAccountToFirebase(newAccount).catch(err => console.warn('Firebase pushUserAccount:', err));
+
     return { success: true, message: `Account for ${cleanName} created successfully!`, account: newAccount };
   };
 
   const updateAccount = (accountId: string, updates: Partial<UserAccount>) => {
+    let updatedAccObj: UserAccount | undefined;
     setAccounts(prev => {
-      const updated = prev.map(a => a.id === accountId ? { ...a, ...updates } : a);
+      const updated = prev.map(a => {
+        if (a.id === accountId) {
+          updatedAccObj = { ...a, ...updates };
+          return updatedAccObj;
+        }
+        return a;
+      });
       localStorage.setItem(STORAGE_KEYS.ACCOUNTS, JSON.stringify(updated));
       return updated;
     });
     if (currentAccount && currentAccount.id === accountId) {
       setCurrentAccount(prev => prev ? { ...prev, ...updates } : null);
+    }
+    if (updatedAccObj) {
+      pushUserAccountToFirebase(updatedAccObj).catch(err => console.warn('Firebase pushUserAccount:', err));
     }
   };
 
@@ -1644,6 +1873,10 @@ export const ExpenseProvider: React.FC<{ children: ReactNode }> = ({ children })
     loadDemoData,
     resetAllToDefault,
     resetToInitialData,
+
+    firebaseStatus,
+    syncToFirebase,
+    pullFromFirebase,
   };
 
   return <ExpenseContext.Provider value={value}>{children}</ExpenseContext.Provider>;

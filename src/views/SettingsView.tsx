@@ -28,7 +28,9 @@ import {
   HelpCircle,
   FileSpreadsheet,
   LogOut,
-  UserCheck
+  UserCheck,
+  Cloud,
+  RefreshCw
 } from 'lucide-react';
 import { formatPKR } from '../lib/formatters';
 import { renderCategoryIcon } from '../lib/icons';
@@ -67,6 +69,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onOpenStartFresh }) 
     loadDemoData,
     startFreshWithRealData,
     resetToInitialData,
+    firebaseStatus,
+    syncToFirebase,
+    pullFromFirebase,
   } = useExpense();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -647,7 +652,108 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onOpenStartFresh }) 
         </div>
       </div>
 
-      {/* 7. About Application & Icon Branding */}
+      {/* 7. Firebase Firestore Cloud Database & Sync */}
+      <div className="rounded-3xl bg-white/70 dark:bg-slate-900/60 border border-slate-200 dark:border-white/10 p-6 backdrop-blur-xl shadow-xl space-y-4 transition-colors">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-slate-100 dark:border-white/10">
+          <div>
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <Cloud className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              <span>Firebase Firestore Cloud Database</span>
+            </h3>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+              Real-time cloud synchronization & persistent database for your financial records
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-bold border ${
+              firebaseStatus.isConnected
+                ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30'
+                : 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30'
+            }`}>
+              <span className={`h-2 w-2 rounded-full ${firebaseStatus.isConnected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
+              {firebaseStatus.isConnected ? 'Firebase Connected' : 'Connecting to Cloud'}
+            </span>
+          </div>
+        </div>
+
+        {/* Cloud Details Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="rounded-2xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 p-3">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Database Engine</span>
+            <p className="text-xs font-bold text-slate-800 dark:text-white mt-1">Google Cloud Firestore</p>
+            <p className="text-[10px] text-slate-400 truncate mt-0.5">{firebaseStatus.databaseId || 'Default instance'}</p>
+          </div>
+
+          <div className="rounded-2xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 p-3">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Firebase Project</span>
+            <p className="text-xs font-bold text-slate-800 dark:text-white mt-1 truncate">{firebaseStatus.projectId || 'Active'}</p>
+            <p className="text-[10px] text-emerald-600 dark:text-emerald-400 mt-0.5">Security Rules Deployed</p>
+          </div>
+
+          <div className="rounded-2xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 p-3">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Last Synchronized</span>
+            <p className="text-xs font-bold text-slate-800 dark:text-white mt-1">
+              {firebaseStatus.lastSyncedAt 
+                ? new Date(firebaseStatus.lastSyncedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+                : 'Pending sync'}
+            </p>
+            <p className="text-[10px] text-slate-400 mt-0.5">
+              {firebaseStatus.lastSyncedAt ? new Date(firebaseStatus.lastSyncedAt).toLocaleDateString() : 'Auto-sync active'}
+            </p>
+          </div>
+        </div>
+
+        {/* Architecture Note */}
+        <div className="rounded-2xl bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/50 p-3.5 text-xs text-blue-900 dark:text-blue-200 space-y-1">
+          <p className="font-semibold flex items-center gap-1.5">
+            <Sparkles className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+            <span>Hybrid Architecture: Offline-First + Real-time Cloud Sync</span>
+          </p>
+          <p className="text-[11px] text-blue-800/80 dark:text-blue-300/80 leading-relaxed">
+            Aapka app offline-first hai — jab internet na ho, har entry phone me foran save hoti hai. Jaise hi internet connect hota hai, sab data real-time Google Firebase Firestore cloud database ke sath synchronize ho jata hai.
+          </p>
+        </div>
+
+        {/* Sync Action Buttons */}
+        <div className="flex flex-wrap items-center gap-3 pt-1">
+          <button
+            onClick={async () => {
+              const ok = await syncToFirebase();
+              if (ok) {
+                showAlert('Successfully synced all financial records to Firebase Firestore Cloud!');
+              } else {
+                showAlert(firebaseStatus.error || 'Failed to sync to Firebase. Check internet connection.');
+              }
+            }}
+            disabled={firebaseStatus.isSyncing}
+            className="flex items-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 px-4 py-2.5 text-xs font-bold text-white shadow-lg shadow-blue-500/25 active:scale-95 disabled:opacity-50 transition-all"
+          >
+            <RefreshCw className={`h-4 w-4 ${firebaseStatus.isSyncing ? 'animate-spin' : ''}`} />
+            <span>{firebaseStatus.isSyncing ? 'Syncing to Cloud...' : 'Sync Now to Firebase'}</span>
+          </button>
+
+          <button
+            onClick={async () => {
+              if (confirm('Restore and pull latest cloud records from Firebase Firestore?')) {
+                const ok = await pullFromFirebase();
+                if (ok) {
+                  showAlert('Data successfully pulled and restored from Firebase Firestore!');
+                } else {
+                  showAlert(firebaseStatus.error || 'Could not pull remote data from Firebase.');
+                }
+              }
+            }}
+            disabled={firebaseStatus.isSyncing}
+            className="flex items-center gap-2 rounded-2xl bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10 px-4 py-2.5 text-xs font-bold text-slate-800 dark:text-white active:scale-95 disabled:opacity-50 transition-colors"
+          >
+            <Download className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+            <span>Pull from Firebase Cloud</span>
+          </button>
+        </div>
+      </div>
+
+      {/* 8. About Application & Icon Branding */}
       <div className="rounded-3xl bg-white/70 dark:bg-slate-900/60 border border-slate-200 dark:border-white/10 p-6 backdrop-blur-xl shadow-xl transition-colors">
         <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 text-center sm:text-left">
           <div className="relative h-20 w-20 shrink-0 rounded-3xl overflow-hidden shadow-2xl shadow-purple-500/30 ring-2 ring-purple-500/30 bg-slate-900">

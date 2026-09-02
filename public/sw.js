@@ -1,9 +1,15 @@
 // Service Worker for Smart Expense Tracker (ExpensePK)
-const CACHE_NAME = 'expensepk-cache-v1';
+const CACHE_NAME = 'expensepk-cache-v3';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
-  '/manifest.json'
+  '/manifest.json',
+  '/app-icon.png',
+  '/icon-192.png',
+  '/icon-512.png',
+  '/icon-maskable-192.png',
+  '/icon-maskable-512.png',
+  '/apple-touch-icon.png'
 ];
 
 self.addEventListener('install', (event) => {

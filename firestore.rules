@@ -1,0 +1,17 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Allows read and write access to account profiles
+    match /accounts/{accountId} {
+      allow read, write: if true;
+    }
+    // Allows read and write access to user financial data and transactions
+    match /accountData/{accountId} {
+      allow read, write: if true;
+    }
+    // General fallback
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}
