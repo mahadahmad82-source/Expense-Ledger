@@ -49,6 +49,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onOpenStartFresh }) 
     activeProfile,
     switchProfile,
     addProfile,
+    deleteProfile,
+    setProfilePassword,
     wallets,
     addWallet,
     updateWallet,
@@ -80,6 +82,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onOpenStartFresh }) 
   const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
   const [isCatModalOpen, setIsCatModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [editingPinProfile, setEditingPinProfile] = useState<any | null>(null);
+  const [pinInputValue, setPinInputValue] = useState('');
+  const [deletingProfile, setDeletingProfile] = useState<any | null>(null);
 
   // New Wallet Form
   const [walletName, setWalletName] = useState('');
@@ -97,6 +102,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onOpenStartFresh }) 
   // New Profile Form
   const [profName, setProfName] = useState('');
   const [profAvatar, setProfAvatar] = useState('https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=256');
+  const [profPin, setProfPin] = useState('');
 
   const [alertMsg, setAlertMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -139,10 +145,59 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onOpenStartFresh }) 
   const handleAddProfile = (e: React.FormEvent) => {
     e.preventDefault();
     if (!profName.trim()) return;
-    addProfile(profName.trim(), profAvatar);
+    if (profPin && !/^\d{4}$/.test(profPin.trim())) {
+      showAlert('Profile PIN must be exactly 4 digits (e.g. 1234), or left blank.', 'error');
+      return;
+    }
+    addProfile(profName.trim(), profAvatar, undefined, profPin.trim() || undefined);
     setIsProfileModalOpen(false);
     setProfName('');
-    showAlert(`New profile "${profName}" created!`);
+    setProfPin('');
+    showAlert(`New profile "${profName}" created successfully!`);
+  };
+
+  const handleOpenPinModal = (profile: any, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setEditingPinProfile(profile);
+    setPinInputValue(profile.pin || profile.password || '');
+  };
+
+  const handleSavePin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingPinProfile) return;
+    const cleanPin = pinInputValue.trim();
+    if (cleanPin && !/^\d{4}$/.test(cleanPin)) {
+      showAlert('PIN must be exactly 4 numeric digits (e.g. 1234).', 'error');
+      return;
+    }
+    const res = setProfilePassword(editingPinProfile.id, cleanPin || undefined);
+    showAlert(res.message, res.success ? 'success' : 'error');
+    setEditingPinProfile(null);
+    setPinInputValue('');
+  };
+
+  const handleRemovePin = () => {
+    if (!editingPinProfile) return;
+    const res = setProfilePassword(editingPinProfile.id, undefined);
+    showAlert(res.message, res.success ? 'success' : 'error');
+    setEditingPinProfile(null);
+    setPinInputValue('');
+  };
+
+  const handleDeleteProfileClick = (profile: any, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (profiles.length <= 1) {
+      showAlert('Cannot delete the only profile. Every account requires at least one profile.', 'error');
+      return;
+    }
+    setDeletingProfile(profile);
+  };
+
+  const handleConfirmDeleteProfile = () => {
+    if (!deletingProfile) return;
+    const res = deleteProfile(deletingProfile.id);
+    showAlert(res.message, res.success ? 'success' : 'error');
+    setDeletingProfile(null);
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -392,47 +447,123 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onOpenStartFresh }) 
       {/* 3. Profile Management */}
       <div className="rounded-3xl bg-white/70 dark:bg-slate-900/60 border border-slate-200 dark:border-white/10 p-6 backdrop-blur-xl shadow-xl space-y-4 transition-colors">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <Users className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-            <h3 className="text-sm font-bold text-slate-900 dark:text-white">Multi-Profile Support</h3>
+          <div>
+            <div className="flex items-center gap-2.5">
+              <Users className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white">Multi-Profile & PIN Security</h3>
+            </div>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+              Manage profiles, set 4-digit PIN locks, or remove unwanted profiles
+            </p>
           </div>
 
           <button
             onClick={() => setIsProfileModalOpen(true)}
-            className="flex items-center gap-1 text-xs font-bold text-purple-600 dark:text-purple-400 hover:underline"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-50 dark:bg-purple-600/20 text-xs font-bold text-purple-600 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-600/30 transition-all border border-purple-200 dark:border-purple-500/30"
           >
             <Plus className="h-3.5 w-3.5" />
             <span>Add Profile</span>
           </button>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           {profiles.map((p) => {
             const isActive = p.id === activeProfile.id;
+            const hasPin = Boolean((p.pin || p.password)?.trim());
 
             return (
               <div
                 key={p.id}
-                onClick={() => switchProfile(p.id)}
-                className={`flex items-center justify-between rounded-2xl p-3 border transition-all cursor-pointer ${
+                className={`flex flex-col justify-between rounded-2xl p-4 border transition-all ${
                   isActive
-                    ? 'bg-purple-50 dark:bg-purple-600/20 border-purple-500 shadow-md shadow-purple-600/20'
-                    : 'bg-slate-50 dark:bg-white/5 border-slate-200 dark:border-white/10 hover:bg-slate-100 dark:hover:bg-white/10'
+                    ? 'bg-purple-50/80 dark:bg-purple-600/15 border-purple-500 shadow-md shadow-purple-600/15 ring-1 ring-purple-500/30'
+                    : 'bg-slate-50/80 dark:bg-white/5 border-slate-200 dark:border-white/10 hover:bg-slate-100/80 dark:hover:bg-white/10'
                 }`}
               >
-                <div className="flex items-center gap-3">
-                  <img src={p.avatar} alt={p.name} className="h-10 w-10 rounded-full object-cover ring-2 ring-purple-500/50" />
-                  <div>
-                    <p className="text-xs font-bold text-slate-900 dark:text-white">{p.name}</p>
-                    <p className="text-[10px] text-slate-500 dark:text-slate-400">{p.currency} Account</p>
+                {/* Header info */}
+                <div className="flex items-start justify-between gap-2 mb-3">
+                  <div
+                    onClick={() => switchProfile(p.id)}
+                    className="flex items-center gap-3 cursor-pointer min-w-0 flex-1"
+                  >
+                    <img
+                      src={p.avatar}
+                      alt={p.name}
+                      className="h-11 w-11 rounded-2xl object-cover ring-2 ring-purple-500/40 shrink-0"
+                    />
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{p.name}</p>
+                        {isActive && (
+                          <span className="rounded-full bg-purple-600 text-white px-2 py-0.2 text-[9px] font-extrabold shadow-sm">
+                            Active
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
+                        {p.email || 'Local Profile'}
+                      </p>
+                    </div>
                   </div>
+
+                  {/* Delete Profile button */}
+                  {profiles.length > 1 ? (
+                    <button
+                      type="button"
+                      title="Delete this profile"
+                      onClick={(e) => handleDeleteProfileClick(p, e)}
+                      className="p-1.5 rounded-xl text-rose-500 hover:bg-rose-500/10 dark:hover:bg-rose-500/20 transition-colors shrink-0"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  ) : (
+                    <span className="p-1 text-[10px] text-slate-400" title="Cannot delete default profile">
+                      Default
+                    </span>
+                  )}
                 </div>
 
-                {isActive && (
-                  <span className="rounded-full bg-purple-500/20 px-2 py-0.5 text-[9px] font-extrabold text-purple-700 dark:text-purple-300">
-                    Active
-                  </span>
-                )}
+                {/* Bottom action row: PIN Management & Switch */}
+                <div className="flex items-center justify-between pt-2.5 border-t border-slate-200/60 dark:border-white/10 text-xs">
+                  {/* PIN Action button */}
+                  <button
+                    type="button"
+                    onClick={(e) => handleOpenPinModal(p, e)}
+                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-semibold transition-all ${
+                      hasPin
+                        ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 hover:bg-amber-500/25'
+                        : 'bg-slate-200/70 dark:bg-white/10 text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-white/15'
+                    }`}
+                  >
+                    {hasPin ? (
+                      <>
+                        <Lock className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                        <span>PIN Set • Edit</span>
+                      </>
+                    ) : (
+                      <>
+                        <ShieldCheck className="h-3.5 w-3.5 text-slate-400" />
+                        <span>Set 4-Digit PIN</span>
+                      </>
+                    )}
+                  </button>
+
+                  {/* Switch button */}
+                  {!isActive ? (
+                    <button
+                      type="button"
+                      onClick={() => switchProfile(p.id)}
+                      className="text-[11px] font-bold text-purple-600 dark:text-purple-400 hover:underline px-1"
+                    >
+                      Switch To Profile →
+                    </button>
+                  ) : (
+                    <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
+                      <Check className="h-3.5 w-3.5" />
+                      In Use
+                    </span>
+                  )}
+                </div>
               </div>
             );
           })}
@@ -1002,6 +1133,24 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onOpenStartFresh }) 
                 />
               </div>
 
+              <div>
+                <label className="flex items-center justify-between text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
+                  <span>4-Digit PIN Lock (Optional)</span>
+                  <span className="text-purple-600 dark:text-purple-400 lowercase font-normal">Optional</span>
+                </label>
+                <input
+                  type="password"
+                  maxLength={4}
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  placeholder="e.g. 1234 (leave blank for no lock)"
+                  value={profPin}
+                  onChange={(e) => setProfPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                  className="w-full rounded-2xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/15 px-3 py-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500 font-mono tracking-widest"
+                />
+                <p className="text-[10px] text-slate-400 mt-1">Require 4-digit numeric code when switching to this profile</p>
+              </div>
+
               <div className="mt-6 flex justify-end gap-2 pt-2 border-t border-slate-100 dark:border-white/10">
                 <button
                   type="button"
@@ -1018,6 +1167,119 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onOpenStartFresh }) 
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Set / Change 4-Digit Profile PIN Modal */}
+      {editingPinProfile && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in">
+          <div className="w-full max-w-sm rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/15 p-6 shadow-2xl backdrop-blur-2xl animate-in zoom-in-95 text-slate-900 dark:text-white">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-white/10 mb-4">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-300">
+                  <Lock className="h-4 w-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold">Profile 4-Digit PIN</h3>
+                  <p className="text-[10px] text-slate-400">Profile: {editingPinProfile.name}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setEditingPinProfile(null)}
+                className="rounded-xl bg-slate-100 dark:bg-white/10 p-1.5 text-slate-500 hover:text-slate-900 dark:hover:text-white"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSavePin} className="space-y-4">
+              <div>
+                <label className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-1">
+                  Enter 4-Digit Code
+                </label>
+                <input
+                  type="password"
+                  maxLength={4}
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  required
+                  placeholder="e.g. 5678"
+                  value={pinInputValue}
+                  onChange={(e) => setPinInputValue(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                  className="w-full rounded-2xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/15 px-3.5 py-2.5 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500 font-mono tracking-widest text-center"
+                  autoFocus
+                />
+                <p className="text-[10px] text-slate-400 mt-1 text-center">
+                  This 4-digit PIN will be asked whenever anyone tries to switch to this profile.
+                </p>
+              </div>
+
+              <div className="pt-2 border-t border-slate-100 dark:border-white/10 space-y-2">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setEditingPinProfile(null)}
+                    className="flex-1 rounded-2xl py-2.5 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 rounded-2xl bg-purple-600 py-2.5 text-xs font-bold text-white hover:bg-purple-500 shadow-lg shadow-purple-600/30"
+                  >
+                    Save 4-Digit PIN
+                  </button>
+                </div>
+
+                {(editingPinProfile.pin || editingPinProfile.password) && (
+                  <button
+                    type="button"
+                    onClick={handleRemovePin}
+                    className="w-full py-2 rounded-2xl text-[11px] font-semibold text-rose-500 hover:bg-rose-500/10 transition-colors"
+                  >
+                    Remove PIN Protection
+                  </button>
+                )}
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Profile Confirmation Modal */}
+      {deletingProfile && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in">
+          <div className="w-full max-w-sm rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/15 p-6 shadow-2xl backdrop-blur-2xl animate-in zoom-in-95 text-slate-900 dark:text-white">
+            <div className="text-center pt-2 pb-4">
+              <div className="inline-flex items-center justify-center h-14 w-14 rounded-2xl bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 mb-3">
+                <Trash2 className="h-7 w-7" />
+              </div>
+              <h3 className="text-base font-bold">Delete Profile?</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                Are you sure you want to delete <span className="font-bold text-slate-900 dark:text-white font-mono">"{deletingProfile.name}"</span>?
+              </p>
+              <p className="text-[11px] text-rose-600 dark:text-rose-400 mt-2 bg-rose-50 dark:bg-rose-950/40 p-2.5 rounded-xl border border-rose-200 dark:border-rose-900/50">
+                This will permanently remove all wallets and entries created exclusively inside this profile.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 pt-2 border-t border-slate-100 dark:border-white/10">
+              <button
+                type="button"
+                onClick={() => setDeletingProfile(null)}
+                className="flex-1 py-2.5 rounded-2xl border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/5 text-xs font-semibold"
+              >
+                Keep Profile
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDeleteProfile}
+                className="flex-1 py-2.5 rounded-2xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold shadow-lg shadow-rose-600/30"
+              >
+                Yes, Delete
+              </button>
+            </div>
           </div>
         </div>
       )}

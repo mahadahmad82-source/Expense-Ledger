@@ -110,7 +110,7 @@ interface ExpenseContextType {
   setProfilePassword: (profileId: string, password?: string) => { success: boolean; message: string };
   addProfile: (name: string, avatar?: string, email?: string, password?: string) => UserProfile;
   updateProfile: (id: string, updates: Partial<UserProfile>) => void;
-  deleteProfile: (id: string) => void;
+  deleteProfile: (id: string) => { success: boolean; message: string };
 
   // Wallet Management
   addWallet: (walletData: Omit<Wallet, 'id' | 'created_at' | 'profile_id'>) => Wallet;
@@ -462,17 +462,14 @@ export const ExpenseProvider: React.FC<{ children: ReactNode }> = ({ children })
 
   const [currentAccount, setCurrentAccount] = useState<UserAccount | null>(() => {
     const savedActiveId = localStorage.getItem(STORAGE_KEYS.ACTIVE_ACCOUNT_ID);
-    if (savedActiveId === '') {
-      // User explicitly logged out
+    if (!savedActiveId) {
+      // Clean state: No active session saved, require authentication / registration!
       return null;
     }
     const savedAccountsStr = localStorage.getItem(STORAGE_KEYS.ACCOUNTS);
     const accList: UserAccount[] = savedAccountsStr ? JSON.parse(savedAccountsStr) : [DEFAULT_OWNER_ACCOUNT];
-    if (savedActiveId) {
-      const matched = accList.find(a => a.id === savedActiveId);
-      if (matched) return matched;
-    }
-    return accList.find(a => a.id === 'acc-mahad') || DEFAULT_OWNER_ACCOUNT;
+    const matched = accList.find(a => a.id === savedActiveId);
+    return matched || null;
   });
 
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
@@ -1104,8 +1101,9 @@ export const ExpenseProvider: React.FC<{ children: ReactNode }> = ({ children })
     const target = profiles.find(p => p.id === profileId);
     if (!target) return { success: false, message: 'Profile not found.' };
 
-    if (target.password && target.password.trim() !== passwordAttempt.trim()) {
-      return { success: false, message: 'Incorrect profile password. Please try again.' };
+    const expectedPinOrPass = (target.pin || target.password || '').trim();
+    if (expectedPinOrPass && expectedPinOrPass !== passwordAttempt.trim()) {
+      return { success: false, message: 'Incorrect 4-digit PIN / password. Please try again.' };
     }
 
     setActiveProfileId(profileId);
@@ -1113,23 +1111,28 @@ export const ExpenseProvider: React.FC<{ children: ReactNode }> = ({ children })
     return { success: true, message: `Switched to ${target.name} profile successfully.` };
   };
 
-  const setProfilePassword = (profileId: string, password?: string): { success: boolean; message: string } => {
-    const clean = password?.trim();
-    updateProfile(profileId, { password: clean || undefined });
+  const setProfilePassword = (profileId: string, passwordOrPin?: string): { success: boolean; message: string } => {
+    const clean = passwordOrPin?.trim();
+    updateProfile(profileId, { 
+      password: clean || undefined,
+      pin: clean || undefined
+    });
     return {
       success: true,
-      message: clean ? 'Profile password updated successfully.' : 'Profile password removed.'
+      message: clean ? 'Profile 4-digit PIN has been set/updated successfully.' : 'Profile PIN protection removed.'
     };
   };
 
-  const addProfile = (name: string, avatar?: string, email?: string, password?: string): UserProfile => {
+  const addProfile = (name: string, avatar?: string, email?: string, passwordOrPin?: string): UserProfile => {
+    const cleanPass = passwordOrPin?.trim();
     const newProfile: UserProfile = {
       id: `prof-${Date.now()}`,
       account_id: currentAccount?.id || 'acc-mahad',
       name,
       avatar: avatar || `https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=256`,
       email: email || `${name.toLowerCase().replace(/\s+/g, '')}@expensepk.app`,
-      password: password?.trim() || undefined,
+      password: cleanPass || undefined,
+      pin: cleanPass || undefined,
       is_default: false,
       created_at: new Date().toISOString(),
     };
@@ -1167,16 +1170,32 @@ export const ExpenseProvider: React.FC<{ children: ReactNode }> = ({ children })
     setProfiles(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
   };
 
-  const deleteProfile = (id: string) => {
+  const deleteProfile = (id: string): { success: boolean; message: string } => {
     if (profiles.length <= 1) {
-      alert("You cannot delete the only profile remaining.");
-      return;
+      return { 
+        success: false, 
+        message: 'You cannot delete the only remaining profile. Every account requires at least 1 profile.' 
+      };
     }
-    setProfiles(prev => prev.filter(p => p.id !== id));
+    
+    const target = profiles.find(p => p.id === id);
+    const remaining = profiles.filter(p => p.id !== id);
+    setProfiles(remaining);
+
+    // Delete associated wallets, budgets, savings goals, and bills for this profile
+    setAllWallets(prev => prev.filter(w => w.profile_id !== id));
+    setAllBudgets(prev => prev.filter(b => b.profile_id !== id));
+    setAllSavingsGoals(prev => prev.filter(s => s.profile_id !== id));
+    setAllBills(prev => prev.filter(b => b.profile_id !== id));
+
     if (activeProfileId === id) {
-      const remaining = profiles.filter(p => p.id !== id);
       setActiveProfileId(remaining[0].id);
     }
+
+    return { 
+      success: true, 
+      message: `Profile "${target?.name || 'Profile'}" and its records have been deleted successfully.` 
+    };
   };
 
   // Wallet Actions

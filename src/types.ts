@@ -27,6 +27,7 @@ export interface UserProfile {
   avatar: string;
   email?: string;
   password?: string;
+  pin?: string;
   is_default?: boolean;
   created_at: string;
 }
