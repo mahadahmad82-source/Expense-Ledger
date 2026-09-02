@@ -23,7 +23,7 @@ import {
 import { formatPKR, formatCompactPKR } from '../lib/formatters';
 
 export const PlanningView: React.FC = () => {
-  const { transactions, wallets, activeProfile } = useExpense();
+  const { transactions, wallets, activeProfile, theme } = useExpense();
 
   // 1. Goal Timeline Calculator State
   const [goalTargetAmount, setGoalTargetAmount] = useState<number>(300000);
@@ -91,39 +91,39 @@ export const PlanningView: React.FC = () => {
   const isRisky = purchasePrice > totalWalletLiquidity * 0.9 || projectedRemainingBuffer < 0;
 
   return (
-    <div className="space-y-6 pb-20 lg:pb-8">
+    <div className="space-y-6 pb-24 lg:pb-8">
       
       {/* Header Bar */}
       <div>
-        <h1 className="text-2xl sm:text-3xl font-bold text-white font-display">
+        <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white font-display">
           Financial Planning & Calculators
         </h1>
-        <p className="text-xs text-slate-400 mt-0.5">
+        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
           Simulate purchase impacts, goal forecast timelines, and compound growth in PKR
         </p>
       </div>
 
       {/* Historical Run-Rate Baseline Card */}
-      <div className="rounded-3xl bg-slate-900/60 border border-purple-500/20 p-6 backdrop-blur-xl shadow-xl">
+      <div className="rounded-3xl bg-white/80 dark:bg-slate-900/60 border border-slate-200 dark:border-purple-500/20 p-6 backdrop-blur-xl shadow-xl transition-colors">
         <div className="flex items-center gap-2 mb-3">
-          <Zap className="h-5 w-5 text-purple-400" />
-          <h3 className="text-sm font-bold text-white">Your Past 90-Day Baseline Run-Rate</h3>
+          <Zap className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+          <h3 className="text-sm font-bold text-slate-900 dark:text-white">Your Past 90-Day Baseline Run-Rate</h3>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="rounded-2xl bg-white/5 p-3.5 border border-white/5">
-            <span className="text-[10px] font-bold uppercase text-slate-400">Avg Monthly Inflow</span>
-            <p className="text-lg font-black text-emerald-400 font-mono mt-0.5">{formatPKR(avgMonthlyIncome)}</p>
+          <div className="rounded-2xl bg-slate-50 dark:bg-white/5 p-3.5 border border-slate-100 dark:border-white/5">
+            <span className="text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400">Avg Monthly Inflow</span>
+            <p className="text-lg font-black text-emerald-600 dark:text-emerald-400 font-mono mt-0.5">{formatPKR(avgMonthlyIncome)}</p>
           </div>
 
-          <div className="rounded-2xl bg-white/5 p-3.5 border border-white/5">
-            <span className="text-[10px] font-bold uppercase text-slate-400">Avg Monthly Burn</span>
-            <p className="text-lg font-black text-rose-400 font-mono mt-0.5">{formatPKR(avgMonthlyExpense)}</p>
+          <div className="rounded-2xl bg-slate-50 dark:bg-white/5 p-3.5 border border-slate-100 dark:border-white/5">
+            <span className="text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400">Avg Monthly Burn</span>
+            <p className="text-lg font-black text-rose-600 dark:text-rose-400 font-mono mt-0.5">{formatPKR(avgMonthlyExpense)}</p>
           </div>
 
-          <div className="rounded-2xl bg-white/5 p-3.5 border border-white/5">
-            <span className="text-[10px] font-bold uppercase text-slate-400">Avg Free Cash Flow</span>
-            <p className="text-lg font-black text-purple-300 font-mono mt-0.5">{formatPKR(historicalNetSavings)}</p>
+          <div className="rounded-2xl bg-slate-50 dark:bg-white/5 p-3.5 border border-slate-100 dark:border-white/5">
+            <span className="text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400">Avg Free Cash Flow</span>
+            <p className="text-lg font-black text-purple-600 dark:text-purple-300 font-mono mt-0.5">{formatPKR(historicalNetSavings)}</p>
           </div>
         </div>
       </div>
@@ -132,70 +132,70 @@ export const PlanningView: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
         {/* Controls (5 cols) */}
-        <div className="lg:col-span-5 rounded-3xl bg-slate-900/60 border border-white/10 p-6 backdrop-blur-xl shadow-xl space-y-4">
+        <div className="lg:col-span-5 rounded-3xl bg-white/80 dark:bg-slate-900/60 border border-slate-200 dark:border-white/10 p-6 backdrop-blur-xl shadow-xl space-y-4 transition-colors">
           <div className="flex items-center gap-2">
-            <div className="rounded-xl bg-purple-600/30 p-2 text-purple-400">
+            <div className="rounded-xl bg-purple-600/20 p-2 text-purple-600 dark:text-purple-400">
               <Calculator className="h-5 w-5" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-white">Goal Timeline Calculator</h3>
-              <p className="text-[11px] text-slate-400">Estimate target completion date</p>
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white">Goal Timeline Calculator</h3>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">Estimate target completion date</p>
             </div>
           </div>
 
           <div>
-            <label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1">
+            <label className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-1">
               Target Goal Amount (PKR)
             </label>
             <input
               type="number"
               value={goalTargetAmount}
               onChange={(e) => setGoalTargetAmount(Number(e.target.value))}
-              className="w-full rounded-2xl bg-white/5 border border-white/15 px-3.5 py-2.5 text-base font-bold text-white font-mono focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="w-full rounded-2xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/15 px-3.5 py-2.5 text-base font-bold text-slate-900 dark:text-white font-mono focus:outline-none focus:ring-2 focus:ring-purple-500"
             />
           </div>
 
           <div>
-            <label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1">
+            <label className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-1">
               Monthly Contribution (PKR)
             </label>
             <input
               type="number"
               value={monthlySavingsContribution}
               onChange={(e) => setMonthlySavingsContribution(Number(e.target.value))}
-              className="w-full rounded-2xl bg-white/5 border border-white/15 px-3.5 py-2.5 text-base font-bold text-white font-mono focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="w-full rounded-2xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/15 px-3.5 py-2.5 text-base font-bold text-slate-900 dark:text-white font-mono focus:outline-none focus:ring-2 focus:ring-purple-500"
             />
           </div>
 
           <div>
-            <label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1">
+            <label className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-1">
               Existing Saved Funds (PKR)
             </label>
             <input
               type="number"
               value={initialSavingsAmount}
               onChange={(e) => setInitialSavingsAmount(Number(e.target.value))}
-              className="w-full rounded-2xl bg-white/5 border border-white/15 px-3.5 py-2.5 text-base font-bold text-white font-mono focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="w-full rounded-2xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/15 px-3.5 py-2.5 text-base font-bold text-slate-900 dark:text-white font-mono focus:outline-none focus:ring-2 focus:ring-purple-500"
             />
           </div>
 
           {/* Outcome Banner */}
-          <div className="rounded-2xl bg-gradient-to-r from-purple-900/60 to-indigo-900/60 border border-purple-500/30 p-4">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-purple-300">Estimated Milestone</span>
-            <p className="text-2xl font-black text-white font-display mt-0.5">
+          <div className="rounded-2xl bg-gradient-to-r from-purple-100 to-indigo-100 dark:from-purple-900/60 dark:to-indigo-900/60 border border-purple-300 dark:border-purple-500/30 p-4">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-purple-700 dark:text-purple-300">Estimated Milestone</span>
+            <p className="text-2xl font-black text-slate-900 dark:text-white font-display mt-0.5">
               {monthsToReachGoal} Months
             </p>
-            <p className="text-xs text-purple-200 mt-1">
-              You will reach {formatPKR(goalTargetAmount)} by <span className="font-bold text-white">{completionDate}</span>!
+            <p className="text-xs text-purple-900 dark:text-purple-200 mt-1">
+              You will reach {formatPKR(goalTargetAmount)} by <span className="font-bold text-purple-950 dark:text-white">{completionDate}</span>!
             </p>
           </div>
         </div>
 
         {/* Projection Chart (7 cols) */}
-        <div className="lg:col-span-7 rounded-3xl bg-slate-900/60 border border-white/10 p-6 backdrop-blur-xl shadow-xl flex flex-col justify-between">
+        <div className="lg:col-span-7 rounded-3xl bg-white/80 dark:bg-slate-900/60 border border-slate-200 dark:border-white/10 p-6 backdrop-blur-xl shadow-xl flex flex-col justify-between transition-colors">
           <div>
-            <h3 className="text-sm font-bold text-white">Compound Savings Growth Trajectory</h3>
-            <p className="text-[11px] text-slate-400">Visual path toward {formatPKR(goalTargetAmount)} target</p>
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white">Compound Savings Growth Trajectory</h3>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400">Visual path toward {formatPKR(goalTargetAmount)} target</p>
           </div>
 
           <div className="h-64 w-full my-4">
@@ -207,14 +207,15 @@ export const PlanningView: React.FC = () => {
                     <stop offset="95%" stopColor="#8B5CF6" stopOpacity={0.0} />
                   </linearGradient>
                 </defs>
-                <XAxis dataKey="period" stroke="#64748B" fontSize={10} />
-                <YAxis stroke="#64748B" fontSize={10} tickFormatter={(val) => formatCompactPKR(val)} />
+                <XAxis dataKey="period" stroke="#94A3B8" fontSize={10} />
+                <YAxis stroke="#94A3B8" fontSize={10} tickFormatter={(val) => formatCompactPKR(val)} />
                 <Tooltip
                   contentStyle={{
-                    backgroundColor: '#0F172A',
-                    borderColor: 'rgba(255,255,255,0.15)',
+                    backgroundColor: theme === 'dark' ? '#0F172A' : '#ffffff',
+                    borderColor: theme === 'dark' ? 'rgba(255,255,255,0.15)' : '#e2e8f0',
                     borderRadius: '16px',
                     fontSize: '12px',
+                    color: theme === 'dark' ? '#fff' : '#0f172a',
                   }}
                   formatter={(val: any) => [formatPKR(Number(val)), '']}
                 />
@@ -223,7 +224,7 @@ export const PlanningView: React.FC = () => {
             </ResponsiveContainer>
           </div>
 
-          <p className="text-[11px] text-slate-400 text-center">
+          <p className="text-[11px] text-slate-500 dark:text-slate-400 text-center">
             Accelerate by +Rs. 5,000/mo to shave ~{(monthsToReachGoal * 0.18).toFixed(1)} months off your timeline.
           </p>
         </div>
@@ -231,38 +232,38 @@ export const PlanningView: React.FC = () => {
       </div>
 
       {/* Calculator 2: "Can I Afford This?" Instant Simulator */}
-      <div className="rounded-3xl bg-slate-900/60 border border-white/10 p-6 sm:p-8 backdrop-blur-xl shadow-xl space-y-6">
+      <div className="rounded-3xl bg-white/80 dark:bg-slate-900/60 border border-slate-200 dark:border-white/10 p-6 sm:p-8 backdrop-blur-xl shadow-xl space-y-6 transition-colors">
         <div className="flex items-center gap-3">
-          <div className="rounded-2xl bg-cyan-500/20 p-2.5 text-cyan-400">
+          <div className="rounded-2xl bg-cyan-500/20 p-2.5 text-cyan-600 dark:text-cyan-400">
             <HelpCircle className="h-6 w-6" />
           </div>
           <div>
-            <h3 className="text-base font-bold text-white">"Can I Afford This Purchase?" Simulator</h3>
-            <p className="text-xs text-slate-400">Stress-test any expense against your liquid wallets and monthly savings rate</p>
+            <h3 className="text-base font-bold text-slate-900 dark:text-white">"Can I Afford This Purchase?" Simulator</h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Stress-test any expense against your liquid wallets and monthly savings rate</p>
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1">
+            <label className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-1">
               Item Price (PKR)
             </label>
             <input
               type="number"
               value={purchasePrice}
               onChange={(e) => setPurchasePrice(Number(e.target.value))}
-              className="w-full rounded-2xl bg-white/5 border border-white/15 px-4 py-2.5 text-base font-bold text-white font-mono focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="w-full rounded-2xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/15 px-4 py-2.5 text-base font-bold text-slate-900 dark:text-white font-mono focus:outline-none focus:ring-2 focus:ring-purple-500"
             />
           </div>
 
           <div>
-            <label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1">
+            <label className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-1">
               Category
             </label>
             <select
               value={purchaseCategory}
               onChange={(e) => setPurchaseCategory(e.target.value)}
-              className="w-full rounded-2xl bg-slate-800 border border-white/15 px-3 py-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="w-full rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-white/15 px-3 py-2.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
             >
               <option value="Electronics">Electronics / Tech</option>
               <option value="Vehicle">Vehicle / Bike Maintenance</option>
@@ -273,13 +274,13 @@ export const PlanningView: React.FC = () => {
           </div>
 
           <div>
-            <label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1">
+            <label className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-1">
               Payment Schedule
             </label>
             <select
               value={installmentMonths}
               onChange={(e) => setInstallmentMonths(Number(e.target.value))}
-              className="w-full rounded-2xl bg-slate-800 border border-white/15 px-3 py-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="w-full rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-white/15 px-3 py-2.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
             >
               <option value={1}>100% Upfront (Single Debit)</option>
               <option value={3}>3-Month Installment</option>
@@ -293,25 +294,25 @@ export const PlanningView: React.FC = () => {
         <div
           className={`rounded-3xl p-6 border transition-all ${
             isAffordable
-              ? 'bg-emerald-950/30 border-emerald-500/40 text-emerald-200'
+              ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-500/40 text-emerald-900 dark:text-emerald-200'
               : isRisky
-              ? 'bg-rose-950/30 border-rose-500/40 text-rose-200'
-              : 'bg-amber-950/30 border-amber-500/40 text-amber-200'
+              ? 'bg-rose-50 dark:bg-rose-950/30 border-rose-500/40 text-rose-900 dark:text-rose-200'
+              : 'bg-amber-50 dark:bg-amber-950/30 border-amber-500/40 text-amber-900 dark:text-amber-200'
           }`}
         >
           <div className="flex items-start gap-4">
-            <div className="p-2 rounded-2xl bg-white/10 shrink-0">
+            <div className="p-2 rounded-2xl bg-white/20 dark:bg-white/10 shrink-0">
               {isAffordable ? (
-                <CheckCircle2 className="h-7 w-7 text-emerald-400" />
+                <CheckCircle2 className="h-7 w-7 text-emerald-600 dark:text-emerald-400" />
               ) : isRisky ? (
-                <AlertTriangle className="h-7 w-7 text-rose-400" />
+                <AlertTriangle className="h-7 w-7 text-rose-600 dark:text-rose-400" />
               ) : (
-                <ShieldCheck className="h-7 w-7 text-amber-400" />
+                <ShieldCheck className="h-7 w-7 text-amber-600 dark:text-amber-400" />
               )}
             </div>
 
             <div>
-              <h4 className="text-base font-bold text-white">
+              <h4 className="text-base font-bold text-slate-900 dark:text-white">
                 {isAffordable
                   ? 'Verdict: Financially Safe to Purchase! ✅'
                   : isRisky
@@ -319,20 +320,20 @@ export const PlanningView: React.FC = () => {
                   : 'Verdict: Moderate Impact on Monthly Savings ⚖️'}
               </h4>
 
-              <p className="text-xs text-slate-200 mt-1 leading-relaxed">
+              <p className="text-xs text-slate-700 dark:text-slate-200 mt-1 leading-relaxed">
                 {isAffordable && (
                   <>
-                    Your liquid cash of <span className="font-bold text-white">{formatPKR(totalWalletLiquidity)}</span> easily covers this purchase without destabilizing your baseline emergency buffer. Your projected monthly surplus remains healthy at <span className="font-bold text-white">{formatPKR(projectedRemainingBuffer)}</span>.
+                    Your liquid cash of <span className="font-bold text-slate-900 dark:text-white">{formatPKR(totalWalletLiquidity)}</span> easily covers this purchase without destabilizing your baseline emergency buffer. Your projected monthly surplus remains healthy at <span className="font-bold text-slate-900 dark:text-white">{formatPKR(projectedRemainingBuffer)}</span>.
                   </>
                 )}
                 {isRisky && (
                   <>
-                    This purchase requires <span className="font-bold text-white">{Math.round((purchasePrice / totalWalletLiquidity) * 100)}%</span> of your total liquid wealth or will compress your monthly cash flow into negative territory. Consider spreading across {installmentMonths > 1 ? `${installmentMonths + 3}` : '3'} months or saving for 2 more pay cycles.
+                    This purchase requires <span className="font-bold text-slate-900 dark:text-white">{Math.round((purchasePrice / totalWalletLiquidity) * 100)}%</span> of your total liquid wealth or will compress your monthly cash flow into negative territory. Consider spreading across {installmentMonths > 1 ? `${installmentMonths + 3}` : '3'} months or saving for 2 more pay cycles.
                   </>
                 )}
                 {!isAffordable && !isRisky && (
                   <>
-                    You have enough balance to cover this, but it will consume <span className="font-bold text-white">{formatPKR(monthlyImpact)}</span> from your monthly cash flow, leaving <span className="font-bold text-white">{formatPKR(projectedRemainingBuffer)}</span> for unexpected expenses.
+                    You have enough balance to cover this, but it will consume <span className="font-bold text-slate-900 dark:text-white">{formatPKR(monthlyImpact)}</span> from your monthly cash flow, leaving <span className="font-bold text-slate-900 dark:text-white">{formatPKR(projectedRemainingBuffer)}</span> for unexpected expenses.
                   </>
                 )}
               </p>

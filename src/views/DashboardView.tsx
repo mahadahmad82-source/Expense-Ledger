@@ -15,7 +15,8 @@ import {
   Sparkles,
   ChevronRight,
   CheckCircle2,
-  PiggyBank
+  PiggyBank,
+  RefreshCw
 } from 'lucide-react';
 import {
   AreaChart,
@@ -27,13 +28,15 @@ import {
   PieChart,
   Pie,
   Cell,
-  BarChart,
-  Bar,
 } from 'recharts';
 import { formatPKR, formatCompactPKR, formatDate } from '../lib/formatters';
 import { renderCategoryIcon } from '../lib/icons';
 
-export const DashboardView: React.FC = () => {
+interface DashboardViewProps {
+  onOpenStartFresh?: () => void;
+}
+
+export const DashboardView: React.FC<DashboardViewProps> = ({ onOpenStartFresh }) => {
   const {
     activeProfile,
     wallets,
@@ -47,6 +50,7 @@ export const DashboardView: React.FC = () => {
     setActiveTab,
     setEditingTransaction,
     setActiveReceiptUrl,
+    theme,
   } = useExpense();
 
   const totalBalance = useMemo(() => {
@@ -136,10 +140,10 @@ export const DashboardView: React.FC = () => {
   }, [transactions]);
 
   return (
-    <div className="space-y-6 pb-20 lg:pb-8">
+    <div className="space-y-6 pb-24 lg:pb-8">
       
       {/* Top Banner: Total Balance Hero Card matching Sleek Interface */}
-      <div className="relative overflow-hidden rounded-[32px] bg-gradient-to-br from-purple-600 via-indigo-700 to-[#3B82F6] border border-white/20 p-6 sm:p-8 shadow-2xl backdrop-blur-2xl">
+      <div className="relative overflow-hidden rounded-[32px] bg-gradient-to-br from-purple-600 via-indigo-700 to-[#3B82F6] border border-white/20 p-6 sm:p-8 shadow-2xl backdrop-blur-2xl text-white">
         
         {/* Glow ambient spots */}
         <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full bg-white/20 blur-3xl pointer-events-none" />
@@ -215,67 +219,67 @@ export const DashboardView: React.FC = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         
         {/* Income Card */}
-        <div className="rounded-[32px] bg-white/5 border border-white/10 p-6 backdrop-blur-2xl shadow-xl flex flex-col justify-between">
+        <div className="rounded-[32px] bg-white/80 dark:bg-white/5 border border-slate-200 dark:border-white/10 p-6 backdrop-blur-2xl shadow-lg dark:shadow-xl flex flex-col justify-between transition-colors">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold text-white/50">This Month Income</span>
-            <div className="rounded-2xl bg-emerald-500/20 p-2.5 text-emerald-400">
+            <span className="text-xs font-semibold text-slate-500 dark:text-white/50">This Month Income</span>
+            <div className="rounded-2xl bg-emerald-500/15 p-2.5 text-emerald-600 dark:text-emerald-400">
               <TrendingUp className="h-4 w-4" />
             </div>
           </div>
-          <p className="text-2xl font-bold text-emerald-400 font-display">
+          <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 font-display">
             {formatPKR(totalIncome)}
           </p>
-          <p className="text-[11px] text-white/40 mt-1 flex items-center gap-1">
-            <span className="text-emerald-400 font-semibold">Active Cycle</span> • {currentMonthTransactions.filter(t => t.type === 'income').length} entries
+          <p className="text-[11px] text-slate-500 dark:text-white/40 mt-1 flex items-center gap-1">
+            <span className="text-emerald-600 dark:text-emerald-400 font-semibold">Active Cycle</span> • {currentMonthTransactions.filter(t => t.type === 'income').length} entries
           </p>
         </div>
 
         {/* Expense Card */}
-        <div className="rounded-[32px] bg-white/5 border border-white/10 p-6 backdrop-blur-2xl shadow-xl flex flex-col justify-between">
+        <div className="rounded-[32px] bg-white/80 dark:bg-white/5 border border-slate-200 dark:border-white/10 p-6 backdrop-blur-2xl shadow-lg dark:shadow-xl flex flex-col justify-between transition-colors">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold text-white/50">This Month Outflow</span>
-            <div className="rounded-2xl bg-rose-500/20 p-2.5 text-rose-400">
+            <span className="text-xs font-semibold text-slate-500 dark:text-white/50">This Month Outflow</span>
+            <div className="rounded-2xl bg-rose-500/15 p-2.5 text-rose-600 dark:text-rose-400">
               <TrendingDown className="h-4 w-4" />
             </div>
           </div>
-          <p className="text-2xl font-bold text-rose-400 font-display">
+          <p className="text-2xl font-bold text-rose-600 dark:text-rose-400 font-display">
             {formatPKR(totalExpense)}
           </p>
-          <p className="text-[11px] text-white/40 mt-1 flex items-center gap-1">
-            <span className="text-rose-400 font-semibold">Spent</span> • {currentMonthTransactions.filter(t => t.type === 'expense').length} transactions
+          <p className="text-[11px] text-slate-500 dark:text-white/40 mt-1 flex items-center gap-1">
+            <span className="text-rose-600 dark:text-rose-400 font-semibold">Spent</span> • {currentMonthTransactions.filter(t => t.type === 'expense').length} transactions
           </p>
         </div>
 
         {/* Net Savings Card */}
-        <div className="rounded-[32px] bg-white/5 border border-white/10 p-6 backdrop-blur-2xl shadow-xl flex flex-col justify-between">
+        <div className="rounded-[32px] bg-white/80 dark:bg-white/5 border border-slate-200 dark:border-white/10 p-6 backdrop-blur-2xl shadow-lg dark:shadow-xl flex flex-col justify-between transition-colors">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold text-white/50">Net Month Savings</span>
-            <div className="rounded-2xl bg-purple-500/20 p-2.5 text-purple-400">
+            <span className="text-xs font-semibold text-slate-500 dark:text-white/50">Net Month Savings</span>
+            <div className="rounded-2xl bg-purple-500/15 p-2.5 text-purple-600 dark:text-purple-400">
               <PiggyBank className="h-4 w-4" />
             </div>
           </div>
-          <p className={`text-2xl font-bold font-display ${netSavings >= 0 ? 'text-purple-300' : 'text-rose-400'}`}>
+          <p className={`text-2xl font-bold font-display ${netSavings >= 0 ? 'text-purple-600 dark:text-purple-300' : 'text-rose-600 dark:text-rose-400'}`}>
             {formatPKR(netSavings)}
           </p>
-          <p className="text-[11px] text-white/40 mt-1">
+          <p className="text-[11px] text-slate-500 dark:text-white/40 mt-1">
             {totalIncome > 0 ? `${Math.round((netSavings / totalIncome) * 100)}% savings rate` : '0% savings rate'}
           </p>
         </div>
 
         {/* Overall Budget Tracker Card */}
-        <div className="rounded-[32px] bg-white/5 border border-white/10 p-6 backdrop-blur-2xl shadow-xl flex flex-col justify-between">
+        <div className="rounded-[32px] bg-white/80 dark:bg-white/5 border border-slate-200 dark:border-white/10 p-6 backdrop-blur-2xl shadow-lg dark:shadow-xl flex flex-col justify-between transition-colors">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold text-white/50">Budget Limit</span>
-            <span className={`text-xs font-bold ${budgetPercentage > 90 ? 'text-rose-400' : budgetPercentage > 70 ? 'text-amber-400' : 'text-cyan-400'}`}>
+            <span className="text-xs font-semibold text-slate-500 dark:text-white/50">Budget Limit</span>
+            <span className={`text-xs font-bold ${budgetPercentage > 90 ? 'text-rose-500' : budgetPercentage > 70 ? 'text-amber-500' : 'text-cyan-600 dark:text-cyan-400'}`}>
               {budgetPercentage}%
             </span>
           </div>
-          <p className="text-xl font-bold text-white font-display">
+          <p className="text-xl font-bold text-slate-900 dark:text-white font-display">
             {overallBudget ? formatPKR(overallBudget.amount) : 'No Budget Set'}
           </p>
           
           {/* Progress Bar */}
-          <div className="mt-2.5 h-2 w-full rounded-full bg-white/10 overflow-hidden">
+          <div className="mt-2.5 h-2 w-full rounded-full bg-slate-200 dark:bg-white/10 overflow-hidden">
             <div
               className={`h-full rounded-full transition-all duration-500 ${
                 budgetPercentage > 90
@@ -293,23 +297,23 @@ export const DashboardView: React.FC = () => {
 
       {/* Budget Warning Banner if above 80% */}
       {overallBudget && budgetPercentage >= 80 && (
-        <div className="rounded-[32px] bg-gradient-to-r from-amber-500/20 via-rose-500/20 to-transparent border border-amber-500/30 p-5 flex items-center justify-between">
+        <div className="rounded-[32px] bg-gradient-to-r from-amber-500/15 via-rose-500/15 to-transparent border border-amber-500/30 p-5 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="rounded-2xl bg-amber-500/30 p-2.5 text-amber-300">
+            <div className="rounded-2xl bg-amber-500/25 p-2.5 text-amber-600 dark:text-amber-300">
               <AlertTriangle className="h-5 w-5" />
             </div>
             <div>
-              <h4 className="text-xs font-bold text-white">
+              <h4 className="text-xs font-bold text-slate-900 dark:text-white">
                 {budgetPercentage >= 100 ? 'Budget Limit Exceeded!' : 'High Spending Alert (Over 80%)'}
               </h4>
-              <p className="text-[11px] text-white/60 mt-0.5">
+              <p className="text-[11px] text-slate-600 dark:text-white/60 mt-0.5">
                 You have spent {formatPKR(totalExpense)} of your {formatPKR(overallBudget.amount)} monthly budget cap.
               </p>
             </div>
           </div>
           <button
             onClick={() => setActiveTab('budgets')}
-            className="rounded-2xl bg-white/10 px-4 py-2 text-xs font-semibold text-white hover:bg-white/20 transition-colors shrink-0 border border-white/10"
+            className="rounded-2xl bg-white/10 px-4 py-2 text-xs font-semibold text-slate-900 dark:text-white hover:bg-white/20 transition-colors shrink-0 border border-slate-300 dark:border-white/10"
           >
             Review Limits
           </button>
@@ -320,18 +324,18 @@ export const DashboardView: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* Spending Trend Line/Area Chart (2 Cols) */}
-        <div className="lg:col-span-2 rounded-[32px] bg-white/5 border border-white/10 p-6 backdrop-blur-2xl shadow-2xl">
+        <div className="lg:col-span-2 rounded-[32px] bg-white/80 dark:bg-white/5 border border-slate-200 dark:border-white/10 p-6 backdrop-blur-2xl shadow-xl transition-colors">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="text-sm font-bold text-white">6-Month Cash Flow Trend</h3>
-              <p className="text-[11px] text-white/40">Income vs Expenses (PKR)</p>
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white">6-Month Cash Flow Trend</h3>
+              <p className="text-[11px] text-slate-500 dark:text-white/40">Income vs Expenses (PKR)</p>
             </div>
             <div className="flex items-center gap-3 text-xs">
-              <span className="flex items-center gap-1.5 text-emerald-400 font-medium">
-                <span className="h-2 w-2 rounded-full bg-emerald-400" /> Income
+              <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-medium">
+                <span className="h-2 w-2 rounded-full bg-emerald-500" /> Income
               </span>
-              <span className="flex items-center gap-1.5 text-rose-400 font-medium">
-                <span className="h-2 w-2 rounded-full bg-rose-400" /> Expenses
+              <span className="flex items-center gap-1.5 text-rose-600 dark:text-rose-400 font-medium">
+                <span className="h-2 w-2 rounded-full bg-rose-500" /> Expenses
               </span>
             </div>
           </div>
@@ -349,21 +353,21 @@ export const DashboardView: React.FC = () => {
                     <stop offset="95%" stopColor="#F43F5E" stopOpacity={0.0} />
                   </linearGradient>
                 </defs>
-                <XAxis dataKey="month" stroke="#64748B" fontSize={11} tickLine={false} />
+                <XAxis dataKey="month" stroke="#94A3B8" fontSize={11} tickLine={false} />
                 <YAxis
-                  stroke="#64748B"
+                  stroke="#94A3B8"
                   fontSize={10}
                   tickLine={false}
                   tickFormatter={(val) => formatCompactPKR(val)}
                 />
                 <Tooltip
                   contentStyle={{
-                    backgroundColor: '#0e0720',
-                    borderColor: 'rgba(255,255,255,0.15)',
+                    backgroundColor: theme === 'dark' ? '#0e0720' : '#ffffff',
+                    borderColor: theme === 'dark' ? 'rgba(255,255,255,0.15)' : '#e2e8f0',
                     borderRadius: '16px',
                     fontSize: '12px',
-                    color: '#fff',
-                    boxShadow: '0 10px 25px -5px rgba(0,0,0,0.5)',
+                    color: theme === 'dark' ? '#fff' : '#0f172a',
+                    boxShadow: '0 10px 25px -5px rgba(0,0,0,0.2)',
                   }}
                   formatter={(value: any) => [formatPKR(Number(value)), '']}
                 />
@@ -375,15 +379,15 @@ export const DashboardView: React.FC = () => {
         </div>
 
         {/* Category Expense Donut Chart (1 Col) */}
-        <div className="rounded-[32px] bg-white/5 border border-white/10 p-6 backdrop-blur-2xl shadow-2xl flex flex-col justify-between">
+        <div className="rounded-[32px] bg-white/80 dark:bg-white/5 border border-slate-200 dark:border-white/10 p-6 backdrop-blur-2xl shadow-xl flex flex-col justify-between transition-colors">
           <div>
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-bold text-white">Expense Breakdown</h3>
-              <span className="text-[11px] text-purple-400 font-semibold cursor-pointer hover:underline" onClick={() => setActiveTab('analytics')}>
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white">Expense Breakdown</h3>
+              <span className="text-[11px] text-purple-600 dark:text-purple-400 font-semibold cursor-pointer hover:underline" onClick={() => setActiveTab('analytics')}>
                 View all →
               </span>
             </div>
-            <p className="text-[11px] text-white/40">Current Month Distribution</p>
+            <p className="text-[11px] text-slate-500 dark:text-white/40">Current Month Distribution</p>
           </div>
 
           <div className="h-48 w-full my-2">
@@ -405,17 +409,18 @@ export const DashboardView: React.FC = () => {
                   </Pie>
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: '#0e0720',
-                      borderColor: 'rgba(255,255,255,0.15)',
+                      backgroundColor: theme === 'dark' ? '#0e0720' : '#ffffff',
+                      borderColor: theme === 'dark' ? 'rgba(255,255,255,0.15)' : '#e2e8f0',
                       borderRadius: '12px',
                       fontSize: '11px',
+                      color: theme === 'dark' ? '#fff' : '#0f172a',
                     }}
                     formatter={(val: any) => [formatPKR(Number(val)), 'Spent']}
                   />
                 </PieChart>
               </ResponsiveContainer>
             ) : (
-              <div className="flex h-full items-center justify-center text-xs text-white/40">
+              <div className="flex h-full items-center justify-center text-xs text-slate-400 dark:text-white/40">
                 No expenses logged this month
               </div>
             )}
@@ -427,9 +432,9 @@ export const DashboardView: React.FC = () => {
               <div key={item.name} className="flex items-center justify-between text-xs">
                 <div className="flex items-center gap-2">
                   <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: item.color }} />
-                  <span className="text-white/70 font-medium truncate max-w-[110px]">{item.name}</span>
+                  <span className="text-slate-700 dark:text-white/70 font-medium truncate max-w-[110px]">{item.name}</span>
                 </div>
-                <span className="font-bold text-white">{formatPKR(item.value)}</span>
+                <span className="font-bold text-slate-900 dark:text-white">{formatPKR(item.value)}</span>
               </div>
             ))}
           </div>
@@ -441,15 +446,15 @@ export const DashboardView: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* Recent Transactions List (2 Cols) */}
-        <div className="lg:col-span-2 rounded-[32px] bg-white/5 border border-white/10 p-6 backdrop-blur-2xl shadow-2xl">
+        <div className="lg:col-span-2 rounded-[32px] bg-white/80 dark:bg-white/5 border border-slate-200 dark:border-white/10 p-6 backdrop-blur-2xl shadow-xl transition-colors">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="text-sm font-bold text-white">Recent Transactions</h3>
-              <p className="text-[11px] text-white/40">Latest activity in Pakistani Rupees</p>
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white">Recent Transactions</h3>
+              <p className="text-[11px] text-slate-500 dark:text-white/40">Latest activity in Pakistani Rupees</p>
             </div>
             <button
               onClick={() => setActiveTab('transactions')}
-              className="text-xs font-semibold text-purple-400 hover:text-purple-300"
+              className="text-xs font-semibold text-purple-600 dark:text-purple-400 hover:underline"
             >
               See All History →
             </button>
@@ -457,7 +462,7 @@ export const DashboardView: React.FC = () => {
 
           <div className="space-y-2.5">
             {recentTransactions.length === 0 ? (
-              <p className="py-8 text-center text-xs text-white/40">No transactions recorded yet.</p>
+              <p className="py-8 text-center text-xs text-slate-400 dark:text-white/40">No transactions recorded yet.</p>
             ) : (
               recentTransactions.map((tx) => {
                 const cat = catMap.get(tx.category_id);
@@ -472,11 +477,11 @@ export const DashboardView: React.FC = () => {
                       setEditingTransaction(tx);
                       setIsAddTxOpen(true);
                     }}
-                    className="flex items-center justify-between rounded-2xl bg-white/[0.03] hover:bg-white/[0.08] p-3.5 transition-colors cursor-pointer border border-white/5"
+                    className="flex items-center justify-between rounded-2xl bg-slate-50 dark:bg-white/[0.03] hover:bg-slate-100 dark:hover:bg-white/[0.08] p-3.5 transition-colors cursor-pointer border border-slate-200/80 dark:border-white/5"
                   >
                     <div className="flex items-center gap-3 truncate">
                       <div
-                        className="flex h-10 w-10 items-center justify-center rounded-2xl text-white shrink-0"
+                        className="flex h-10 w-10 items-center justify-center rounded-2xl text-white shrink-0 shadow-sm"
                         style={{
                           backgroundColor: isTransfer ? '#6366F125' : `${cat?.color || '#64748B'}25`,
                           color: isTransfer ? '#818CF8' : (cat?.color || '#94A3B8'),
@@ -487,7 +492,7 @@ export const DashboardView: React.FC = () => {
 
                       <div className="truncate">
                         <div className="flex items-center gap-1.5">
-                          <p className="text-xs font-bold text-white truncate">
+                          <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
                             {isTransfer ? 'Wallet Transfer' : (cat?.name || 'Uncategorized')}
                           </p>
                           {tx.receipt_url && (
@@ -496,14 +501,14 @@ export const DashboardView: React.FC = () => {
                                 e.stopPropagation();
                                 setActiveReceiptUrl(tx.receipt_url!);
                               }}
-                              className="rounded-lg bg-purple-500/20 px-1.5 py-0.5 text-[9px] text-purple-300 hover:bg-purple-500/40"
+                              className="rounded-lg bg-purple-500/15 px-1.5 py-0.5 text-[9px] text-purple-700 dark:text-purple-300 hover:bg-purple-500/30"
                               title="View receipt"
                             >
                               Receipt 📷
                             </span>
                           )}
                         </div>
-                        <p className="text-[11px] text-white/50 truncate">
+                        <p className="text-[11px] text-slate-500 dark:text-white/50 truncate">
                           {tx.note || wallet?.name || 'No description'} • {wallet?.name}
                         </p>
                       </div>
@@ -512,12 +517,12 @@ export const DashboardView: React.FC = () => {
                     <div className="text-right shrink-0">
                       <p
                         className={`text-xs font-bold font-mono ${
-                          isIncome ? 'text-emerald-400' : isTransfer ? 'text-indigo-300' : 'text-white'
+                          isIncome ? 'text-emerald-600 dark:text-emerald-400' : isTransfer ? 'text-indigo-600 dark:text-indigo-300' : 'text-slate-900 dark:text-white'
                         }`}
                       >
                         {isIncome ? '+' : isTransfer ? '↔ ' : '-'}{formatPKR(tx.amount)}
                       </p>
-                      <p className="text-[10px] text-white/40">{formatDate(tx.date)}</p>
+                      <p className="text-[10px] text-slate-400 dark:text-white/40">{formatDate(tx.date)}</p>
                     </div>
                   </div>
                 );
@@ -530,12 +535,12 @@ export const DashboardView: React.FC = () => {
         <div className="space-y-6">
           
           {/* Bills Widget */}
-          <div className="rounded-[32px] bg-white/5 border border-white/10 p-6 backdrop-blur-2xl shadow-2xl">
+          <div className="rounded-[32px] bg-white/80 dark:bg-white/5 border border-slate-200 dark:border-white/10 p-6 backdrop-blur-2xl shadow-xl transition-colors">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-bold text-white">Upcoming Bills</h3>
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white">Upcoming Bills</h3>
               <button
                 onClick={() => setActiveTab('bills')}
-                className="text-xs font-semibold text-amber-400 hover:underline"
+                className="text-xs font-semibold text-amber-600 dark:text-amber-400 hover:underline"
               >
                 Manage →
               </button>
@@ -543,8 +548,8 @@ export const DashboardView: React.FC = () => {
 
             <div className="space-y-2">
               {upcomingBills.length === 0 ? (
-                <div className="py-4 text-center text-xs text-white/40">
-                  <CheckCircle2 className="h-6 w-6 mx-auto mb-1 text-emerald-400/60" />
+                <div className="py-4 text-center text-xs text-slate-400 dark:text-white/40">
+                  <CheckCircle2 className="h-6 w-6 mx-auto mb-1 text-emerald-500/60" />
                   All bills paid for this cycle!
                 </div>
               ) : (
@@ -554,10 +559,10 @@ export const DashboardView: React.FC = () => {
                     className="flex items-center justify-between rounded-2xl bg-amber-500/10 border border-amber-500/20 p-3"
                   >
                     <div>
-                      <p className="text-xs font-bold text-white truncate max-w-[130px]">{bill.title}</p>
-                      <p className="text-[10px] text-amber-300/80">Due {formatDate(bill.due_date)}</p>
+                      <p className="text-xs font-bold text-slate-900 dark:text-white truncate max-w-[130px]">{bill.title}</p>
+                      <p className="text-[10px] text-amber-700 dark:text-amber-300/80">Due {formatDate(bill.due_date)}</p>
                     </div>
-                    <span className="text-xs font-bold text-amber-300">{formatPKR(bill.amount)}</span>
+                    <span className="text-xs font-bold text-amber-700 dark:text-amber-300">{formatPKR(bill.amount)}</span>
                   </div>
                 ))
               )}
@@ -565,17 +570,17 @@ export const DashboardView: React.FC = () => {
           </div>
 
           {/* Quick Smart Tip Banner */}
-          <div className="rounded-[32px] bg-gradient-to-tr from-cyan-950/40 via-purple-950/40 to-blue-950/40 border border-cyan-500/30 p-6 backdrop-blur-2xl shadow-2xl">
+          <div className="rounded-[32px] bg-gradient-to-tr from-cyan-950/20 via-purple-950/20 to-blue-950/20 dark:from-cyan-950/40 dark:via-purple-950/40 dark:to-blue-950/40 border border-cyan-500/30 p-6 backdrop-blur-2xl shadow-xl">
             <div className="flex items-center gap-2 mb-2">
-              <Sparkles className="h-4 w-4 text-cyan-400" />
-              <span className="text-xs font-bold text-cyan-300">Smart Financial Tip</span>
+              <Sparkles className="h-4 w-4 text-cyan-500 dark:text-cyan-400" />
+              <span className="text-xs font-bold text-cyan-700 dark:text-cyan-300">Smart Financial Tip</span>
             </div>
-            <p className="text-xs text-white/80 leading-relaxed">
-              "Automating 10% of monthly salary into Meezan Islamic savings could yield you an extra <span className="font-bold text-white">Rs. 18,500</span> every month towards your bike goal."
+            <p className="text-xs text-slate-700 dark:text-white/80 leading-relaxed">
+              "Automating 10% of monthly salary into Meezan Islamic savings could yield you an extra <span className="font-bold text-slate-900 dark:text-white">Rs. 18,500</span> every month towards your bike goal."
             </p>
             <button
               onClick={() => setActiveTab('tips')}
-              className="mt-3 text-[11px] font-bold text-cyan-400 hover:text-cyan-300 flex items-center gap-1"
+              className="mt-3 text-[11px] font-bold text-cyan-600 dark:text-cyan-400 hover:underline flex items-center gap-1"
             >
               Explore AI Insights →
             </button>

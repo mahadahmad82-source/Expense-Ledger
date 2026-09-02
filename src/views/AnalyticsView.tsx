@@ -40,6 +40,7 @@ export const AnalyticsView: React.FC = () => {
     wallets,
     budgets,
     savingsGoals,
+    theme,
   } = useExpense();
 
   const [timeRange, setTimeRange] = useState<'week' | 'month' | 'quarter' | 'year' | 'all'>('month');
@@ -119,15 +120,15 @@ export const AnalyticsView: React.FC = () => {
   }, [filteredTxs]);
 
   return (
-    <div className="space-y-6 pb-20 lg:pb-8">
+    <div className="space-y-6 pb-24 lg:pb-8">
       
       {/* Header Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-white font-display">
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white font-display">
             Analytics & Insights
           </h1>
-          <p className="text-xs text-slate-400 mt-0.5">
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
             Spending patterns, daily velocity, cash flow trends, and report exports
           </p>
         </div>
@@ -145,9 +146,9 @@ export const AnalyticsView: React.FC = () => {
               savingsGoals,
               activeProfile.name
             )}
-            className="flex items-center gap-1.5 rounded-2xl bg-purple-600/20 border border-purple-500/30 hover:bg-purple-600/30 px-3.5 py-2 text-xs font-semibold text-purple-300 transition-colors"
+            className="flex items-center gap-1.5 rounded-2xl bg-purple-500/10 dark:bg-purple-600/20 border border-purple-500/30 hover:bg-purple-500/20 px-3.5 py-2 text-xs font-semibold text-purple-700 dark:text-purple-300 transition-colors"
           >
-            <FileText className="h-4 w-4 text-purple-400" />
+            <FileText className="h-4 w-4 text-purple-600 dark:text-purple-400" />
             <span>Export PDF Report</span>
           </button>
 
@@ -158,16 +159,16 @@ export const AnalyticsView: React.FC = () => {
               wallets,
               `Analytics_Export_${timeRange}`
             )}
-            className="flex items-center gap-1.5 rounded-2xl bg-emerald-600/20 border border-emerald-500/30 hover:bg-emerald-600/30 px-3.5 py-2 text-xs font-semibold text-emerald-300 transition-colors"
+            className="flex items-center gap-1.5 rounded-2xl bg-emerald-500/10 dark:bg-emerald-600/20 border border-emerald-500/30 hover:bg-emerald-500/20 px-3.5 py-2 text-xs font-semibold text-emerald-700 dark:text-emerald-300 transition-colors"
           >
-            <FileSpreadsheet className="h-4 w-4 text-emerald-400" />
+            <FileSpreadsheet className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
             <span>Excel (.xlsx)</span>
           </button>
         </div>
       </div>
 
       {/* Time Range Pill Filters */}
-      <div className="flex items-center gap-2 p-1 rounded-2xl bg-slate-900/60 border border-white/10 w-fit">
+      <div className="flex items-center gap-2 p-1 rounded-2xl bg-white/80 dark:bg-slate-900/60 border border-slate-200 dark:border-white/10 w-fit shadow-sm">
         {(['week', 'month', 'quarter', 'year', 'all'] as const).map((r) => (
           <button
             key={r}
@@ -175,7 +176,7 @@ export const AnalyticsView: React.FC = () => {
             className={`rounded-xl px-4 py-1.5 text-xs font-bold capitalize transition-all ${
               timeRange === r
                 ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/30'
-                : 'text-slate-400 hover:text-white'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
             {r === 'week' ? 'Last 7 Days' : r === 'month' ? 'Last 30 Days' : r === 'quarter' ? 'Last 90 Days' : r === 'year' ? '12 Months' : 'All Time'}
@@ -185,39 +186,39 @@ export const AnalyticsView: React.FC = () => {
 
       {/* Key Metric Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="rounded-3xl bg-slate-900/60 border border-emerald-500/20 p-5 backdrop-blur-xl shadow-xl">
-          <span className="text-xs font-semibold text-slate-400">Total Income</span>
-          <p className="text-2xl font-black text-emerald-400 font-mono mt-1">{formatPKR(totalIncome)}</p>
-          <p className="text-[11px] text-slate-400 mt-1">Inflow for selected window</p>
+        <div className="rounded-3xl bg-white/80 dark:bg-slate-900/60 border border-emerald-500/30 p-5 backdrop-blur-xl shadow-xl transition-colors">
+          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Total Income</span>
+          <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400 font-mono mt-1">{formatPKR(totalIncome)}</p>
+          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">Inflow for selected window</p>
         </div>
 
-        <div className="rounded-3xl bg-slate-900/60 border border-rose-500/20 p-5 backdrop-blur-xl shadow-xl">
-          <span className="text-xs font-semibold text-slate-400">Total Outflow</span>
-          <p className="text-2xl font-black text-rose-400 font-mono mt-1">{formatPKR(totalExpense)}</p>
-          <p className="text-[11px] text-slate-400 mt-1">Direct spending</p>
+        <div className="rounded-3xl bg-white/80 dark:bg-slate-900/60 border border-rose-500/30 p-5 backdrop-blur-xl shadow-xl transition-colors">
+          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Total Outflow</span>
+          <p className="text-2xl font-black text-rose-600 dark:text-rose-400 font-mono mt-1">{formatPKR(totalExpense)}</p>
+          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">Direct spending</p>
         </div>
 
-        <div className="rounded-3xl bg-slate-900/60 border border-purple-500/20 p-5 backdrop-blur-xl shadow-xl">
-          <span className="text-xs font-semibold text-slate-400">Net Surplus / Savings</span>
-          <p className={`text-2xl font-black font-mono mt-1 ${netSavings >= 0 ? 'text-purple-300' : 'text-rose-400'}`}>
+        <div className="rounded-3xl bg-white/80 dark:bg-slate-900/60 border border-purple-500/30 p-5 backdrop-blur-xl shadow-xl transition-colors">
+          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Net Surplus / Savings</span>
+          <p className={`text-2xl font-black font-mono mt-1 ${netSavings >= 0 ? 'text-purple-600 dark:text-purple-300' : 'text-rose-600 dark:text-rose-400'}`}>
             {formatPKR(netSavings)}
           </p>
-          <p className="text-[11px] text-slate-400 mt-1">{savingsRate}% savings efficiency</p>
+          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">{savingsRate}% savings efficiency</p>
         </div>
 
-        <div className="rounded-3xl bg-slate-900/60 border border-cyan-500/20 p-5 backdrop-blur-xl shadow-xl">
-          <span className="text-xs font-semibold text-slate-400">Average Daily Burn</span>
-          <p className="text-2xl font-black text-cyan-300 font-mono mt-1">{formatPKR(avgDailyExpense)}</p>
-          <p className="text-[11px] text-slate-400 mt-1">Estimated daily run rate</p>
+        <div className="rounded-3xl bg-white/80 dark:bg-slate-900/60 border border-cyan-500/30 p-5 backdrop-blur-xl shadow-xl transition-colors">
+          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Average Daily Burn</span>
+          <p className="text-2xl font-black text-cyan-600 dark:text-cyan-300 font-mono mt-1">{formatPKR(avgDailyExpense)}</p>
+          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">Estimated daily run rate</p>
         </div>
       </div>
 
       {/* Main Cash Flow Chart */}
-      <div className="rounded-3xl bg-slate-900/60 border border-white/10 p-6 backdrop-blur-xl shadow-xl">
+      <div className="rounded-3xl bg-white/80 dark:bg-slate-900/60 border border-slate-200 dark:border-white/10 p-6 backdrop-blur-xl shadow-xl transition-colors">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h3 className="text-sm font-bold text-white">Daily Cash Inflow & Outflow Timeline</h3>
-            <p className="text-[11px] text-slate-400">Daily breakdown in Pakistani Rupees (PKR)</p>
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white">Daily Cash Inflow & Outflow Timeline</h3>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400">Daily breakdown in Pakistani Rupees (PKR)</p>
           </div>
         </div>
 
@@ -226,17 +227,18 @@ export const AnalyticsView: React.FC = () => {
             <BarChart data={dailyData} margin={{ top: 10, right: 10, left: -10, bottom: 20 }}>
               <XAxis
                 dataKey="date"
-                stroke="#64748B"
+                stroke="#94A3B8"
                 fontSize={10}
                 tickFormatter={(d) => d.slice(5)}
               />
-              <YAxis stroke="#64748B" fontSize={10} tickFormatter={(val) => formatCompactPKR(val)} />
+              <YAxis stroke="#94A3B8" fontSize={10} tickFormatter={(val) => formatCompactPKR(val)} />
               <Tooltip
                 contentStyle={{
-                  backgroundColor: '#0F172A',
-                  borderColor: 'rgba(255,255,255,0.15)',
+                  backgroundColor: theme === 'dark' ? '#0F172A' : '#ffffff',
+                  borderColor: theme === 'dark' ? 'rgba(255,255,255,0.15)' : '#e2e8f0',
                   borderRadius: '16px',
                   fontSize: '12px',
+                  color: theme === 'dark' ? '#fff' : '#0f172a',
                 }}
                 formatter={(val: any) => [formatPKR(Number(val)), '']}
               />
@@ -252,10 +254,10 @@ export const AnalyticsView: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
         {/* Donut Chart */}
-        <div className="rounded-3xl bg-slate-900/60 border border-white/10 p-6 backdrop-blur-xl shadow-xl flex flex-col justify-between">
+        <div className="rounded-3xl bg-white/80 dark:bg-slate-900/60 border border-slate-200 dark:border-white/10 p-6 backdrop-blur-xl shadow-xl flex flex-col justify-between transition-colors">
           <div>
-            <h3 className="text-sm font-bold text-white mb-1">Expense Breakdown by Category</h3>
-            <p className="text-[11px] text-slate-400">Proportional distribution for {timeRange}</p>
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-1">Expense Breakdown by Category</h3>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400">Proportional distribution for {timeRange}</p>
           </div>
 
           <div className="h-64 w-full my-4">
@@ -277,17 +279,18 @@ export const AnalyticsView: React.FC = () => {
                   </Pie>
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: '#0F172A',
-                      borderColor: 'rgba(255,255,255,0.15)',
+                      backgroundColor: theme === 'dark' ? '#0F172A' : '#ffffff',
+                      borderColor: theme === 'dark' ? 'rgba(255,255,255,0.15)' : '#e2e8f0',
                       borderRadius: '12px',
                       fontSize: '11px',
+                      color: theme === 'dark' ? '#fff' : '#0f172a',
                     }}
                     formatter={(val: any) => [formatPKR(Number(val)), 'Spent']}
                   />
                 </PieChart>
               </ResponsiveContainer>
             ) : (
-              <div className="flex h-full items-center justify-center text-xs text-slate-500">
+              <div className="flex h-full items-center justify-center text-xs text-slate-400">
                 No expense transactions found in this time range.
               </div>
             )}
@@ -295,7 +298,7 @@ export const AnalyticsView: React.FC = () => {
 
           <div className="flex flex-wrap gap-2 justify-center">
             {categoryData.slice(0, 5).map((c) => (
-              <span key={c.name} className="flex items-center gap-1.5 text-xs text-slate-300">
+              <span key={c.name} className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300">
                 <span className="h-2 w-2 rounded-full" style={{ backgroundColor: c.color }} />
                 <span>{c.name}</span>
               </span>
@@ -304,36 +307,36 @@ export const AnalyticsView: React.FC = () => {
         </div>
 
         {/* Category Ranked Table */}
-        <div className="rounded-3xl bg-slate-900/60 border border-white/10 p-6 backdrop-blur-xl shadow-xl">
-          <h3 className="text-sm font-bold text-white mb-1">Top Expense Categories</h3>
-          <p className="text-[11px] text-slate-400 mb-4">Ranked by highest total outflow</p>
+        <div className="rounded-3xl bg-white/80 dark:bg-slate-900/60 border border-slate-200 dark:border-white/10 p-6 backdrop-blur-xl shadow-xl transition-colors">
+          <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-1">Top Expense Categories</h3>
+          <p className="text-[11px] text-slate-500 dark:text-slate-400 mb-4">Ranked by highest total outflow</p>
 
           <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
             {categoryData.map((c, index) => {
               const share = totalExpense > 0 ? Math.round((c.value / totalExpense) * 100) : 0;
 
               return (
-                <div key={c.name} className="rounded-2xl bg-white/5 p-3 border border-white/5">
+                <div key={c.name} className="rounded-2xl bg-slate-50 dark:bg-white/5 p-3 border border-slate-100 dark:border-white/5">
                   <div className="flex items-center justify-between mb-1.5">
                     <div className="flex items-center gap-2.5">
-                      <span className="text-xs font-bold text-slate-500">#{index + 1}</span>
+                      <span className="text-xs font-bold text-slate-400">#{index + 1}</span>
                       <div
-                        className="flex h-7 w-7 items-center justify-center rounded-xl text-white"
+                        className="flex h-7 w-7 items-center justify-center rounded-xl text-white shadow-sm"
                         style={{ backgroundColor: `${c.color}25`, color: c.color }}
                       >
                         {renderCategoryIcon(c.icon, "w-4 h-4")}
                       </div>
-                      <span className="text-xs font-bold text-white">{c.name}</span>
+                      <span className="text-xs font-bold text-slate-900 dark:text-white">{c.name}</span>
                     </div>
 
                     <div className="text-right">
-                      <span className="text-xs font-bold text-white font-mono">{formatPKR(c.value)}</span>
-                      <span className="text-[10px] text-slate-400 ml-1.5">({share}%)</span>
+                      <span className="text-xs font-bold text-slate-900 dark:text-white font-mono">{formatPKR(c.value)}</span>
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400 ml-1.5">({share}%)</span>
                     </div>
                   </div>
 
                   {/* Visual Share Bar */}
-                  <div className="h-1.5 w-full rounded-full bg-white/10 overflow-hidden">
+                  <div className="h-1.5 w-full rounded-full bg-slate-200 dark:bg-white/10 overflow-hidden">
                     <div
                       className="h-full rounded-full transition-all"
                       style={{ width: `${share}%`, backgroundColor: c.color }}

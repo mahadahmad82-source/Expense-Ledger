@@ -46,7 +46,7 @@ export const DEFAULT_CATEGORIES: Category[] = [
   { id: 'cat-business', name: 'Business Income', type: 'income', color: '#3B82F6', icon: 'TrendingUp' },
   { id: 'cat-freelance', name: 'Freelance & Projects', type: 'income', color: '#8B5CF6', icon: 'Laptop' },
   { id: 'cat-investment', name: 'Investments / Returns', type: 'income', color: '#06B6D4', icon: 'DollarSign' },
-  { id: 'cat-gifts', name: 'Gifts & Eidi', type: 'income', color: '#EC4899', icon: 'Gift' },
+  { id: 'cat-gifts', name: 'Gifts & Celebrations', type: 'income', color: '#EC4899', icon: 'Gift' },
   { id: 'cat-others-inc', name: 'Others (Income)', type: 'income', color: '#64748B', icon: 'PlusCircle' },
 ];
 
@@ -201,7 +201,7 @@ export const INITIAL_TRANSACTIONS: Transaction[] = [
     amount: 2850,
     type: 'expense',
     date: '2026-08-22',
-    note: 'Family Dinner at Kolachi / Biryani',
+    note: 'Family Dinner at Restaurant',
     created_at: '2026-08-22T21:30:00.000Z',
   },
   {
@@ -461,7 +461,7 @@ export const INITIAL_BILLS: Bill[] = [
   {
     id: 'bill-rent',
     profile_id: 'prof-personal',
-    title: 'House Rent (Owner Malik Sahab)',
+    title: 'House Rent (Landlord Payment)',
     amount: 45000,
     category_id: 'cat-rent',
     due_date: '2026-09-05',

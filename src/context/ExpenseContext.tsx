@@ -11,6 +11,7 @@ import {
   AppNotification,
   ActiveTab,
   ThemeMode,
+  WalletType,
 } from '../types';
 import {
   INITIAL_PROFILES,
@@ -23,6 +24,14 @@ import {
   INITIAL_LEDGERS,
 } from '../lib/initialData';
 import { formatPKR, formatMonthYear } from '../lib/formatters';
+
+export interface StartingWalletInput {
+  name: string;
+  type: WalletType;
+  balance: number;
+  color?: string;
+  icon?: string;
+}
 
 interface ExpenseContextType {
   // State
@@ -42,7 +51,10 @@ interface ExpenseContextType {
   isOnline: boolean;
   activeTab: ActiveTab;
   isBiometricEnabled: boolean;
+  setIsBiometricEnabled: (enabled: boolean) => void;
   isBiometricUnlocked: boolean;
+  isPushEnabled: boolean;
+  setIsPushEnabled: (enabled: boolean) => void;
   
   // UI Modal State
   isSearchOpen: boolean;
@@ -55,6 +67,7 @@ interface ExpenseContextType {
   // Actions
   setActiveTab: (tab: ActiveTab) => void;
   setTheme: (theme: ThemeMode) => void;
+  toggleTheme: () => void;
   setIsSearchOpen: (open: boolean) => void;
   setIsAddTxOpen: (open: boolean) => void;
   setIsTransferOpen: (open: boolean) => void;
@@ -66,7 +79,7 @@ interface ExpenseContextType {
 
   // Profile Management
   switchProfile: (profileId: string) => void;
-  addProfile: (name: string, email?: string) => UserProfile;
+  addProfile: (name: string, avatar?: string, email?: string) => UserProfile;
   updateProfile: (id: string, updates: Partial<UserProfile>) => void;
   deleteProfile: (id: string) => void;
 
@@ -96,12 +109,15 @@ interface ExpenseContextType {
   addSavingsGoal: (goalData: Omit<SavingsGoal, 'id' | 'profile_id' | 'current_amount'>) => SavingsGoal;
   updateSavingsGoal: (id: string, updates: Partial<SavingsGoal>) => void;
   contributeToGoal: (goalId: string, amount: number, walletId?: string) => void;
+  depositToSavingsGoal: (goalId: string, amount: number, walletId?: string) => void;
+  withdrawFromSavingsGoal: (goalId: string, amount: number, walletId: string) => void;
   deleteSavingsGoal: (id: string) => void;
 
   // Bills Management
   addBill: (billData: Omit<Bill, 'id' | 'created_at' | 'profile_id' | 'is_paid'>) => Bill;
   updateBill: (id: string, updates: Partial<Bill>) => void;
   payBill: (billId: string, walletId: string) => void;
+  markBillAsPaid: (billId: string, walletId: string) => void;
   deleteBill: (id: string) => void;
 
   // Ledger Management
@@ -112,29 +128,39 @@ interface ExpenseContextType {
   dismissNotification: (id: string) => void;
   clearAllNotifications: () => void;
   exportBackupJSON: () => void;
+  exportAllDataJSON: () => void;
   importBackupJSON: (jsonData: string) => boolean;
+  importDataJSON: (jsonData: string) => boolean;
+  
+  // Data Clearing & Fresh Start Operations
+  startFreshWithRealData: (startingWallets: StartingWalletInput[]) => void;
+  clearDemoData: () => void;
+  clearOnlyTransactions: () => void;
+  loadDemoData: () => void;
   resetAllToDefault: () => void;
+  resetToInitialData: () => void;
 }
 
 const ExpenseContext = createContext<ExpenseContextType | undefined>(undefined);
 
 const STORAGE_KEYS = {
-  PROFILES: 'expensepk_profiles_v1',
-  ACTIVE_PROFILE: 'expensepk_active_profile_v1',
-  WALLETS: 'expensepk_wallets_v1',
-  CATEGORIES: 'expensepk_categories_v1',
-  TRANSACTIONS: 'expensepk_transactions_v1',
-  BUDGETS: 'expensepk_budgets_v1',
-  SAVINGS: 'expensepk_savings_v1',
-  BILLS: 'expensepk_bills_v1',
-  LEDGERS: 'expensepk_ledgers_v1',
-  THEME: 'expensepk_theme_v1',
-  BIOMETRIC: 'expensepk_biometric_v1',
+  PROFILES: 'expensepk_profiles_v2',
+  ACTIVE_PROFILE: 'expensepk_active_profile_v2',
+  WALLETS: 'expensepk_wallets_v2',
+  CATEGORIES: 'expensepk_categories_v2',
+  TRANSACTIONS: 'expensepk_transactions_v2',
+  BUDGETS: 'expensepk_budgets_v2',
+  SAVINGS: 'expensepk_savings_v2',
+  BILLS: 'expensepk_bills_v2',
+  LEDGERS: 'expensepk_ledgers_v2',
+  THEME: 'expensepk_theme_v2',
+  BIOMETRIC: 'expensepk_biometric_v2',
+  PUSH: 'expensepk_push_v2',
 };
 
 export const ExpenseProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   // Offline and connectivity detection
-  const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
+  const [isOnline, setIsOnline] = useState<boolean>(() => typeof navigator !== 'undefined' ? navigator.onLine : true);
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
@@ -146,35 +172,67 @@ export const ExpenseProvider: React.FC<{ children: ReactNode }> = ({ children })
     };
   }, []);
 
-  // Theme
+  // Theme State
   const [theme, setThemeState] = useState<ThemeMode>(() => {
-    return (localStorage.getItem(STORAGE_KEYS.THEME) as ThemeMode) || 'dark';
+    const saved = localStorage.getItem(STORAGE_KEYS.THEME);
+    if (saved === 'light' || saved === 'dark') return saved;
+    return 'dark';
   });
+
+  const applyThemeToDOM = (mode: ThemeMode) => {
+    const root = document.documentElement;
+    const body = document.body;
+    if (mode === 'dark') {
+      root.classList.add('dark');
+      root.classList.remove('light');
+      body.classList.add('dark');
+      body.classList.remove('light');
+      root.style.colorScheme = 'dark';
+    } else {
+      root.classList.remove('dark');
+      root.classList.add('light');
+      body.classList.remove('dark');
+      body.classList.add('light');
+      root.style.colorScheme = 'light';
+    }
+  };
 
   const setTheme = (newTheme: ThemeMode) => {
     setThemeState(newTheme);
     localStorage.setItem(STORAGE_KEYS.THEME, newTheme);
-    const root = document.documentElement;
-    if (newTheme === 'dark' || (newTheme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-      root.classList.add('dark');
-      root.classList.remove('light');
-    } else {
-      root.classList.remove('dark');
-      root.classList.add('light');
-    }
+    applyThemeToDOM(newTheme);
+  };
+
+  const toggleTheme = () => {
+    setTheme(theme === 'dark' ? 'light' : 'dark');
   };
 
   useEffect(() => {
-    setTheme(theme);
-  }, []);
+    applyThemeToDOM(theme);
+  }, [theme]);
 
   // Biometric / WebAuthn
-  const [isBiometricEnabled, setIsBiometricEnabled] = useState<boolean>(() => {
+  const [isBiometricEnabled, setIsBiometricEnabledState] = useState<boolean>(() => {
     return localStorage.getItem(STORAGE_KEYS.BIOMETRIC) === 'true';
   });
   const [isBiometricUnlocked, setIsBiometricUnlocked] = useState<boolean>(() => {
     return localStorage.getItem(STORAGE_KEYS.BIOMETRIC) !== 'true';
   });
+
+  const setIsBiometricEnabled = (enabled: boolean) => {
+    setIsBiometricEnabledState(enabled);
+    localStorage.setItem(STORAGE_KEYS.BIOMETRIC, String(enabled));
+  };
+
+  // Push Notifications Preference
+  const [isPushEnabled, setIsPushEnabledState] = useState<boolean>(() => {
+    return localStorage.getItem(STORAGE_KEYS.PUSH) !== 'false';
+  });
+
+  const setIsPushEnabled = (enabled: boolean) => {
+    setIsPushEnabledState(enabled);
+    localStorage.setItem(STORAGE_KEYS.PUSH, String(enabled));
+  };
 
   // Navigation State
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
@@ -236,22 +294,12 @@ export const ExpenseProvider: React.FC<{ children: ReactNode }> = ({ children })
   const [notifications, setNotifications] = useState<AppNotification[]>([
     {
       id: 'notif-1',
-      title: 'K-Electric Bill Due Soon',
-      message: 'Your K-Electric bill of Rs. 18,500 is due on Sep 12, 2026.',
-      type: 'bill_due',
-      date: '2026-09-01T08:00:00Z',
-      is_read: false,
-      link_tab: 'bills',
-    },
-    {
-      id: 'notif-2',
-      title: 'Budget Alert: Food & Dining',
-      message: 'You have spent 78% of your Food budget this cycle.',
+      title: 'Welcome to ExpensePK',
+      message: 'Track income, daily expenses, bills, and monthly ledgers in Pakistani Rupees (PKR).',
       type: 'budget_alert',
-      date: '2026-08-30T10:00:00Z',
+      date: new Date().toISOString(),
       is_read: false,
-      link_tab: 'budgets',
-    }
+    },
   ]);
 
   // Synchronize to localStorage whenever datasets change
@@ -324,14 +372,13 @@ export const ExpenseProvider: React.FC<{ children: ReactNode }> = ({ children })
 
   // Auto-manage Monthly Ledgers (computes income/expenses per month)
   useEffect(() => {
-    // Generate or update ledgers for months present in transactions
     const monthMap = new Map<string, { income: number; expense: number; month: number; year: number; name: string }>();
 
-    // Current month
     const now = new Date();
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth() + 1;
     const currentKey = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
+    
     monthMap.set(currentKey, {
       income: 0,
       expense: 0,
@@ -401,30 +448,41 @@ export const ExpenseProvider: React.FC<{ children: ReactNode }> = ({ children })
     setActiveProfileId(profileId);
   };
 
-  const addProfile = (name: string, email?: string): UserProfile => {
+  const addProfile = (name: string, avatar?: string, email?: string): UserProfile => {
     const newProfile: UserProfile = {
       id: `prof-${Date.now()}`,
       name,
-      avatar: `https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80`,
+      avatar: avatar || `https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=256`,
       email: email || `${name.toLowerCase().replace(/\s+/g, '')}@expensepk.app`,
       is_default: false,
       created_at: new Date().toISOString(),
     };
     setProfiles(prev => [...prev, newProfile]);
 
-    // Create default Cash & Bank wallet for new profile
     const defaultCash: Wallet = {
       id: `w-cash-${Date.now()}`,
       profile_id: newProfile.id,
       name: 'Cash in Hand',
       type: 'cash',
-      balance: 10000,
-      initial_balance: 10000,
+      balance: 0,
+      initial_balance: 0,
       color: '#10B981',
       icon: 'Coins',
       created_at: new Date().toISOString(),
     };
-    setAllWallets(prev => [...prev, defaultCash]);
+    const defaultBank: Wallet = {
+      id: `w-bank-${Date.now()}`,
+      profile_id: newProfile.id,
+      name: 'Bank Account',
+      type: 'bank',
+      balance: 0,
+      initial_balance: 0,
+      color: '#3B82F6',
+      icon: 'Landmark',
+      created_at: new Date().toISOString(),
+    };
+
+    setAllWallets(prev => [...prev, defaultCash, defaultBank]);
     setActiveProfileId(newProfile.id);
     return newProfile;
   };
@@ -468,14 +526,12 @@ export const ExpenseProvider: React.FC<{ children: ReactNode }> = ({ children })
   const transferFunds = (fromWalletId: string, toWalletId: string, amount: number, note?: string) => {
     if (amount <= 0 || fromWalletId === toWalletId) return;
 
-    // Deduct from sender, add to receiver
     setAllWallets(prev => prev.map(w => {
       if (w.id === fromWalletId) return { ...w, balance: w.balance - amount };
       if (w.id === toWalletId) return { ...w, balance: w.balance + amount };
       return w;
     }));
 
-    // Record transaction
     const fromW = allWallets.find(w => w.id === fromWalletId);
     const toW = allWallets.find(w => w.id === toWalletId);
 
@@ -524,7 +580,6 @@ export const ExpenseProvider: React.FC<{ children: ReactNode }> = ({ children })
       created_at: new Date().toISOString(),
     };
 
-    // Update wallet balance
     setAllWallets(prev => prev.map(w => {
       if (w.id === newTx.wallet_id) {
         if (newTx.type === 'expense') {
@@ -536,18 +591,17 @@ export const ExpenseProvider: React.FC<{ children: ReactNode }> = ({ children })
       return w;
     }));
 
-    // Auto-Save rules for income: transfer % to active savings goal if enabled
+    // Auto-Save rules for income
     if (newTx.type === 'income') {
       const activeGoalWithAutoSave = savingsGoals.find(g => g.auto_save_percentage > 0 && !g.completed_at);
       if (activeGoalWithAutoSave) {
         const autoSaveAmt = Math.round((newTx.amount * activeGoalWithAutoSave.auto_save_percentage) / 100);
         if (autoSaveAmt > 0) {
           contributeToGoal(activeGoalWithAutoSave.id, autoSaveAmt, newTx.wallet_id);
-          // Send notification
           setNotifications(prev => [{
             id: `notif-${Date.now()}`,
             title: 'Auto-Save Triggered',
-            message: `${formatPKR(autoSaveAmt)} (${activeGoalWithAutoSave.auto_save_percentage}%) was automatically routed to your "${activeGoalWithAutoSave.name}" goal.`,
+            message: `${formatPKR(autoSaveAmt)} (${activeGoalWithAutoSave.auto_save_percentage}%) was automatically saved toward "${activeGoalWithAutoSave.name}".`,
             type: 'goal_reached',
             date: new Date().toISOString(),
             is_read: false,
@@ -557,11 +611,10 @@ export const ExpenseProvider: React.FC<{ children: ReactNode }> = ({ children })
       }
     }
 
-    // Check Budget Alerts
+    // Budget Alerts
     if (newTx.type === 'expense') {
       const overallBudget = budgets.find(b => b.type === 'overall');
       if (overallBudget) {
-        // Calculate current month's expenses
         const currentMonthExpense = transactions
           .filter(t => t.type === 'expense')
           .reduce((acc, t) => acc + t.amount, 0) + newTx.amount;
@@ -571,7 +624,7 @@ export const ExpenseProvider: React.FC<{ children: ReactNode }> = ({ children })
           setNotifications(prev => [{
             id: `notif-${Date.now()}`,
             title: '80% Monthly Budget Reached',
-            message: `You have spent ${formatPKR(currentMonthExpense)} of your ${formatPKR(overallBudget.amount)} monthly budget.`,
+            message: `You have spent ${formatPKR(currentMonthExpense)} of your ${formatPKR(overallBudget.amount)} monthly budget limit.`,
             type: 'budget_alert',
             date: new Date().toISOString(),
             is_read: false,
@@ -599,7 +652,6 @@ export const ExpenseProvider: React.FC<{ children: ReactNode }> = ({ children })
     const oldTx = allTransactions.find(t => t.id === id);
     if (!oldTx) return;
 
-    // Reverse old wallet impact and apply new impact
     setAllWallets(prev => prev.map(w => {
       let balance = w.balance;
       if (w.id === oldTx.wallet_id) {
@@ -623,7 +675,6 @@ export const ExpenseProvider: React.FC<{ children: ReactNode }> = ({ children })
   const deleteTransaction = (id: string) => {
     const target = allTransactions.find(t => t.id === id);
     if (target) {
-      // Revert wallet impact
       setAllWallets(prev => prev.map(w => {
         if (w.id === target.wallet_id) {
           if (target.type === 'expense') return { ...w, balance: w.balance + target.amount };
@@ -677,7 +728,6 @@ export const ExpenseProvider: React.FC<{ children: ReactNode }> = ({ children })
   const contributeToGoal = (goalId: string, amount: number, walletId?: string) => {
     if (amount <= 0) return;
 
-    // Deduct from wallet if wallet provided
     if (walletId) {
       setAllWallets(prev => prev.map(w => w.id === walletId ? { ...w, balance: w.balance - amount } : w));
     }
@@ -690,6 +740,28 @@ export const ExpenseProvider: React.FC<{ children: ReactNode }> = ({ children })
           ...g,
           current_amount: newTotal,
           completed_at: isCompleted ? new Date().toISOString() : g.completed_at,
+        };
+      }
+      return g;
+    }));
+  };
+
+  const depositToSavingsGoal = (goalId: string, amount: number, walletId?: string) => {
+    contributeToGoal(goalId, amount, walletId);
+  };
+
+  const withdrawFromSavingsGoal = (goalId: string, amount: number, walletId: string) => {
+    if (amount <= 0) return;
+
+    setAllWallets(prev => prev.map(w => w.id === walletId ? { ...w, balance: w.balance + amount } : w));
+
+    setAllSavingsGoals(prev => prev.map(g => {
+      if (g.id === goalId) {
+        const newTotal = Math.max(0, g.current_amount - amount);
+        return {
+          ...g,
+          current_amount: newTotal,
+          completed_at: newTotal >= g.target_amount ? g.completed_at : undefined,
         };
       }
       return g;
@@ -721,7 +793,6 @@ export const ExpenseProvider: React.FC<{ children: ReactNode }> = ({ children })
     const bill = allBills.find(b => b.id === billId);
     if (!bill) return;
 
-    // Mark bill paid
     setAllBills(prev => prev.map(b => b.id === billId ? {
       ...b,
       is_paid: true,
@@ -729,7 +800,6 @@ export const ExpenseProvider: React.FC<{ children: ReactNode }> = ({ children })
       wallet_id: walletId,
     } : b));
 
-    // Auto-create expense transaction
     addTransaction({
       wallet_id: walletId,
       category_id: bill.category_id,
@@ -740,6 +810,10 @@ export const ExpenseProvider: React.FC<{ children: ReactNode }> = ({ children })
       is_recurring: bill.is_recurring,
       recurrence_pattern: bill.recurrence_pattern === 'none' ? undefined : (bill.recurrence_pattern as any),
     });
+  };
+
+  const markBillAsPaid = (billId: string, walletId: string) => {
+    payBill(billId, walletId);
   };
 
   const deleteBill = (id: string) => {
@@ -776,7 +850,6 @@ export const ExpenseProvider: React.FC<{ children: ReactNode }> = ({ children })
   const toggleBiometricAuth = async (): Promise<boolean> => {
     const newState = !isBiometricEnabled;
     setIsBiometricEnabled(newState);
-    localStorage.setItem(STORAGE_KEYS.BIOMETRIC, String(newState));
     return newState;
   };
 
@@ -784,7 +857,7 @@ export const ExpenseProvider: React.FC<{ children: ReactNode }> = ({ children })
   const exportBackupJSON = () => {
     const data = {
       export_date: new Date().toISOString(),
-      version: '1.0',
+      version: '2.0',
       currency: 'PKR',
       profiles,
       wallets: allWallets,
@@ -805,6 +878,8 @@ export const ExpenseProvider: React.FC<{ children: ReactNode }> = ({ children })
     URL.revokeObjectURL(url);
   };
 
+  const exportAllDataJSON = () => exportBackupJSON();
+
   const importBackupJSON = (jsonData: string): boolean => {
     try {
       const parsed = JSON.parse(jsonData);
@@ -823,7 +898,172 @@ export const ExpenseProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
   };
 
-  const resetAllToDefault = () => {
+  const importDataJSON = (jsonData: string): boolean => importBackupJSON(jsonData);
+
+  // START FRESH WITH REAL DATA (User's real actual start)
+  const startFreshWithRealData = (startingWallets: StartingWalletInput[]) => {
+    // 1. Reset transactions to empty
+    setAllTransactions([]);
+    localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify([]));
+
+    // 2. Set new wallets based on user's real input
+    const newWallets: Wallet[] = startingWallets.map((w, idx) => ({
+      id: `w-real-${Date.now()}-${idx}`,
+      profile_id: activeProfile.id,
+      name: w.name,
+      type: w.type,
+      balance: Number(w.balance) || 0,
+      initial_balance: Number(w.balance) || 0,
+      color: w.color || (idx === 0 ? '#10B981' : idx === 1 ? '#3B82F6' : '#7C3AED'),
+      icon: w.icon || (w.type === 'cash' ? 'Coins' : w.type === 'bank' ? 'Landmark' : 'Smartphone'),
+      created_at: new Date().toISOString(),
+    }));
+
+    setAllWallets(newWallets);
+    localStorage.setItem(STORAGE_KEYS.WALLETS, JSON.stringify(newWallets));
+
+    // 3. Clear bills, savings goals, and ledgers
+    setAllBills([]);
+    localStorage.setItem(STORAGE_KEYS.BILLS, JSON.stringify([]));
+
+    setAllSavingsGoals([]);
+    localStorage.setItem(STORAGE_KEYS.SAVINGS, JSON.stringify([]));
+
+    setAllBudgets([]);
+    localStorage.setItem(STORAGE_KEYS.BUDGETS, JSON.stringify([]));
+
+    // 4. Initialize clean current month ledger
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1;
+    const cleanLedger: LedgerMonth[] = [
+      {
+        id: `ledger-${activeProfile.id}-${currentYear}-${String(currentMonth).padStart(2, '0')}`,
+        profile_id: activeProfile.id,
+        month: currentMonth,
+        year: currentYear,
+        month_name: formatMonthYear(currentYear, currentMonth),
+        total_income: 0,
+        total_expense: 0,
+        net_savings: 0,
+        is_closed: false,
+      }
+    ];
+    setAllLedgers(cleanLedger);
+    localStorage.setItem(STORAGE_KEYS.LEDGERS, JSON.stringify(cleanLedger));
+
+    // 5. Notifications
+    setNotifications([
+      {
+        id: `notif-${Date.now()}`,
+        title: 'Clean Slate Ready! 🎉',
+        message: 'All demo records have been cleared. You are ready to log real transactions.',
+        type: 'goal_reached',
+        date: new Date().toISOString(),
+        is_read: false,
+      }
+    ]);
+  };
+
+  // CLEAR ONLY DEMO DATA (Keep standard categories, clear transactions/bills/goals)
+  const clearDemoData = () => {
+    // Default 0 balance cash and bank wallets
+    const freshWallets: Wallet[] = [
+      {
+        id: `w-cash-${Date.now()}`,
+        profile_id: activeProfile.id,
+        name: 'Cash in Hand',
+        type: 'cash',
+        balance: 0,
+        initial_balance: 0,
+        color: '#10B981',
+        icon: 'Coins',
+        created_at: new Date().toISOString(),
+      },
+      {
+        id: `w-bank-${Date.now()}`,
+        profile_id: activeProfile.id,
+        name: 'Bank Account',
+        type: 'bank',
+        balance: 0,
+        initial_balance: 0,
+        color: '#3B82F6',
+        icon: 'Landmark',
+        created_at: new Date().toISOString(),
+      }
+    ];
+
+    setAllTransactions([]);
+    localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify([]));
+
+    setAllWallets(freshWallets);
+    localStorage.setItem(STORAGE_KEYS.WALLETS, JSON.stringify(freshWallets));
+
+    setAllBills([]);
+    localStorage.setItem(STORAGE_KEYS.BILLS, JSON.stringify([]));
+
+    setAllSavingsGoals([]);
+    localStorage.setItem(STORAGE_KEYS.SAVINGS, JSON.stringify([]));
+
+    setAllBudgets([]);
+    localStorage.setItem(STORAGE_KEYS.BUDGETS, JSON.stringify([]));
+
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1;
+    const cleanLedger: LedgerMonth[] = [
+      {
+        id: `ledger-${activeProfile.id}-${currentYear}-${String(currentMonth).padStart(2, '0')}`,
+        profile_id: activeProfile.id,
+        month: currentMonth,
+        year: currentYear,
+        month_name: formatMonthYear(currentYear, currentMonth),
+        total_income: 0,
+        total_expense: 0,
+        net_savings: 0,
+        is_closed: false,
+      }
+    ];
+    setAllLedgers(cleanLedger);
+    localStorage.setItem(STORAGE_KEYS.LEDGERS, JSON.stringify(cleanLedger));
+
+    setNotifications([
+      {
+        id: `notif-${Date.now()}`,
+        title: 'Demo Data Cleared 🧹',
+        message: 'Demo records successfully removed. Start adding your transactions anytime.',
+        type: 'goal_reached',
+        date: new Date().toISOString(),
+        is_read: false,
+      }
+    ]);
+  };
+
+  const clearOnlyTransactions = () => {
+    setAllTransactions([]);
+    localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify([]));
+
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1;
+    const cleanLedger: LedgerMonth[] = [
+      {
+        id: `ledger-${activeProfile.id}-${currentYear}-${String(currentMonth).padStart(2, '0')}`,
+        profile_id: activeProfile.id,
+        month: currentMonth,
+        year: currentYear,
+        month_name: formatMonthYear(currentYear, currentMonth),
+        total_income: 0,
+        total_expense: 0,
+        net_savings: 0,
+        is_closed: false,
+      }
+    ];
+    setAllLedgers(cleanLedger);
+    localStorage.setItem(STORAGE_KEYS.LEDGERS, JSON.stringify(cleanLedger));
+  };
+
+  const loadDemoData = () => {
     setProfiles(INITIAL_PROFILES);
     setActiveProfileId('prof-personal');
     setAllWallets(INITIAL_WALLETS);
@@ -833,7 +1073,20 @@ export const ExpenseProvider: React.FC<{ children: ReactNode }> = ({ children })
     setAllSavingsGoals(INITIAL_SAVINGS_GOALS);
     setAllBills(INITIAL_BILLS);
     setAllLedgers(INITIAL_LEDGERS);
+
+    localStorage.setItem(STORAGE_KEYS.PROFILES, JSON.stringify(INITIAL_PROFILES));
+    localStorage.setItem(STORAGE_KEYS.ACTIVE_PROFILE, 'prof-personal');
+    localStorage.setItem(STORAGE_KEYS.WALLETS, JSON.stringify(INITIAL_WALLETS));
+    localStorage.setItem(STORAGE_KEYS.CATEGORIES, JSON.stringify(DEFAULT_CATEGORIES));
+    localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(INITIAL_TRANSACTIONS));
+    localStorage.setItem(STORAGE_KEYS.BUDGETS, JSON.stringify(INITIAL_BUDGETS));
+    localStorage.setItem(STORAGE_KEYS.SAVINGS, JSON.stringify(INITIAL_SAVINGS_GOALS));
+    localStorage.setItem(STORAGE_KEYS.BILLS, JSON.stringify(INITIAL_BILLS));
+    localStorage.setItem(STORAGE_KEYS.LEDGERS, JSON.stringify(INITIAL_LEDGERS));
   };
+
+  const resetAllToDefault = () => loadDemoData();
+  const resetToInitialData = () => loadDemoData();
 
   const value: ExpenseContextType = {
     profiles,
@@ -852,7 +1105,10 @@ export const ExpenseProvider: React.FC<{ children: ReactNode }> = ({ children })
     isOnline,
     activeTab,
     isBiometricEnabled,
+    setIsBiometricEnabled,
     isBiometricUnlocked,
+    isPushEnabled,
+    setIsPushEnabled,
 
     isSearchOpen,
     isAddTxOpen,
@@ -863,6 +1119,7 @@ export const ExpenseProvider: React.FC<{ children: ReactNode }> = ({ children })
 
     setActiveTab,
     setTheme,
+    toggleTheme,
     setIsSearchOpen,
     setIsAddTxOpen,
     setIsTransferOpen,
@@ -898,11 +1155,14 @@ export const ExpenseProvider: React.FC<{ children: ReactNode }> = ({ children })
     addSavingsGoal,
     updateSavingsGoal,
     contributeToGoal,
+    depositToSavingsGoal,
+    withdrawFromSavingsGoal,
     deleteSavingsGoal,
 
     addBill,
     updateBill,
     payBill,
+    markBillAsPaid,
     deleteBill,
 
     closeLedgerMonth,
@@ -911,8 +1171,16 @@ export const ExpenseProvider: React.FC<{ children: ReactNode }> = ({ children })
     dismissNotification,
     clearAllNotifications,
     exportBackupJSON,
+    exportAllDataJSON,
     importBackupJSON,
+    importDataJSON,
+
+    startFreshWithRealData,
+    clearDemoData,
+    clearOnlyTransactions,
+    loadDemoData,
     resetAllToDefault,
+    resetToInitialData,
   };
 
   return <ExpenseContext.Provider value={value}>{children}</ExpenseContext.Provider>;

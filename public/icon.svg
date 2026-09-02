@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#7C3AED" />
+      <stop offset="50%" stop-color="#4F46E5" />
+      <stop offset="100%" stop-color="#06B6D4" />
+    </linearGradient>
+    <linearGradient id="innerGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.2" />
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0.05" />
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="16" flood-color="#7C3AED" flood-opacity="0.6"/>
+    </filter>
+  </defs>
+  
+  <!-- Outer Rounded Square Background -->
+  <rect width="512" height="512" rx="128" fill="url(#bgGrad)" />
+  
+  <!-- Inner Glass Panel -->
+  <rect x="32" y="32" width="448" height="448" rx="104" fill="url(#innerGrad)" stroke="#ffffff" stroke-width="3" stroke-opacity="0.3" />
+  
+  <!-- Center Rupee Symbol & Growth Trend Graphics -->
+  <g filter="url(#glow)">
+    <!-- PKR / Rupee Symbol -->
+    <text x="256" y="290" font-family="Outfit, Plus Jakarta Sans, Arial, sans-serif" font-size="200" font-weight="900" fill="#FFFFFF" text-anchor="middle" dominant-baseline="central">₨</text>
+    
+    <!-- Uptrend Arrow -->
+    <path d="M330 180 L400 180 L400 250 M390 190 L300 280 L230 220 L130 320" fill="none" stroke="#10B981" stroke-width="24" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+</svg>

@@ -17,7 +17,7 @@ import {
 import { formatPKR } from '../lib/formatters';
 
 export const SmartTipsView: React.FC = () => {
-  const { transactions, categories, budgets, activeProfile } = useExpense();
+  const { transactions, categories, budgets, activeProfile, theme } = useExpense();
 
   const now = new Date();
   const currentMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -89,66 +89,66 @@ export const SmartTipsView: React.FC = () => {
   ], [totalIncome, idealNeeds, idealWants, idealSavings, foodSpend, transportSpend]);
 
   return (
-    <div className="space-y-6 pb-20 lg:pb-8">
+    <div className="space-y-6 pb-24 lg:pb-8">
       
       {/* Header Bar */}
       <div>
-        <h1 className="text-2xl sm:text-3xl font-bold text-white font-display">
+        <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white font-display">
           Smart Tips & Financial Health
         </h1>
-        <p className="text-xs text-slate-400 mt-0.5">
+        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
           Real-time algorithmic recommendations tailored for your PKR budget and lifestyle
         </p>
       </div>
 
       {/* 50 / 30 / 20 Framework Card */}
-      <div className="rounded-3xl bg-slate-900/60 border border-purple-500/20 p-6 sm:p-8 backdrop-blur-xl shadow-xl space-y-6">
+      <div className="rounded-3xl bg-white/80 dark:bg-slate-900/60 border border-slate-200 dark:border-purple-500/20 p-6 sm:p-8 backdrop-blur-xl shadow-xl space-y-6 transition-colors">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="rounded-2xl bg-purple-500/20 p-2.5 text-purple-400">
+            <div className="rounded-2xl bg-purple-500/20 p-2.5 text-purple-600 dark:text-purple-400">
               <Sparkles className="h-6 w-6" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-white">Your Tailored 50/30/20 Allocation</h3>
-              <p className="text-xs text-slate-400">Standard financial benchmark calculated from your active income</p>
+              <h3 className="text-base font-bold text-slate-900 dark:text-white">Your Tailored 50/30/20 Allocation</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Standard financial benchmark calculated from your active income</p>
             </div>
           </div>
         </div>
 
         {/* 3 Pillars */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="rounded-2xl bg-white/5 border border-white/5 p-4">
+          <div className="rounded-2xl bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 p-4">
             <div className="flex items-center justify-between mb-1">
-              <span className="text-xs font-bold text-slate-300">50% Needs (Rent, Bills, Food)</span>
-              <span className="text-xs font-bold text-purple-400">₨</span>
+              <span className="text-xs font-bold text-slate-700 dark:text-slate-300">50% Needs (Rent, Bills, Food)</span>
+              <span className="text-xs font-bold text-purple-600 dark:text-purple-400">₨</span>
             </div>
-            <p className="text-xl font-black text-white font-mono">{formatPKR(idealNeeds)}</p>
-            <p className="text-[10px] text-slate-400 mt-1">Recommended ceiling for essentials</p>
+            <p className="text-xl font-black text-slate-900 dark:text-white font-mono">{formatPKR(idealNeeds)}</p>
+            <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">Recommended ceiling for essentials</p>
           </div>
 
-          <div className="rounded-2xl bg-white/5 border border-white/5 p-4">
+          <div className="rounded-2xl bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 p-4">
             <div className="flex items-center justify-between mb-1">
-              <span className="text-xs font-bold text-slate-300">30% Wants (Dining, Outings, Gear)</span>
-              <span className="text-xs font-bold text-cyan-400">₨</span>
+              <span className="text-xs font-bold text-slate-700 dark:text-slate-300">30% Wants (Dining, Outings, Gear)</span>
+              <span className="text-xs font-bold text-cyan-600 dark:text-cyan-400">₨</span>
             </div>
-            <p className="text-xl font-black text-white font-mono">{formatPKR(idealWants)}</p>
-            <p className="text-[10px] text-slate-400 mt-1">Discretionary lifestyle spending</p>
+            <p className="text-xl font-black text-slate-900 dark:text-white font-mono">{formatPKR(idealWants)}</p>
+            <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">Discretionary lifestyle spending</p>
           </div>
 
-          <div className="rounded-2xl bg-white/5 border border-white/5 p-4">
+          <div className="rounded-2xl bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 p-4">
             <div className="flex items-center justify-between mb-1">
-              <span className="text-xs font-bold text-slate-300">20% Savings & Emergency</span>
-              <span className="text-xs font-bold text-emerald-400">₨</span>
+              <span className="text-xs font-bold text-slate-700 dark:text-slate-300">20% Savings & Emergency</span>
+              <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">₨</span>
             </div>
-            <p className="text-xl font-black text-emerald-400 font-mono">{formatPKR(idealSavings)}</p>
-            <p className="text-[10px] text-slate-400 mt-1">Target monthly wealth accumulation</p>
+            <p className="text-xl font-black text-emerald-600 dark:text-emerald-400 font-mono">{formatPKR(idealSavings)}</p>
+            <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">Target monthly wealth accumulation</p>
           </div>
         </div>
       </div>
 
       {/* Dynamic Insights Grid */}
       <div className="space-y-4">
-        <h3 className="text-sm font-bold text-white uppercase tracking-wider text-slate-400">
+        <h3 className="text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
           Personalized Actionable Insights
         </h3>
 
@@ -159,18 +159,18 @@ export const SmartTipsView: React.FC = () => {
             return (
               <div
                 key={tip.id}
-                className="rounded-3xl bg-slate-900/60 border border-white/10 hover:border-white/20 p-6 backdrop-blur-xl shadow-xl transition-all flex flex-col justify-between"
+                className="rounded-3xl bg-white/80 dark:bg-slate-900/60 border border-slate-200 dark:border-white/10 hover:border-purple-400 dark:hover:border-white/20 p-6 backdrop-blur-xl shadow-xl transition-all flex flex-col justify-between"
               >
                 <div>
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-3">
                       <div
-                        className="flex h-10 w-10 items-center justify-center rounded-2xl text-white"
+                        className="flex h-10 w-10 items-center justify-center rounded-2xl text-white shadow-sm"
                         style={{ backgroundColor: `${tip.color}25`, color: tip.color }}
                       >
                         <IconComp className="h-5 w-5" />
                       </div>
-                      <h4 className="text-sm font-bold text-white">{tip.title}</h4>
+                      <h4 className="text-sm font-bold text-slate-900 dark:text-white">{tip.title}</h4>
                     </div>
 
                     <span
@@ -185,12 +185,12 @@ export const SmartTipsView: React.FC = () => {
                     </span>
                   </div>
 
-                  <p className="text-xs text-slate-300 leading-relaxed mt-2">
+                  <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed mt-2">
                     {tip.description}
                   </p>
                 </div>
 
-                <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between text-xs font-bold text-purple-400 hover:text-purple-300 cursor-pointer">
+                <div className="mt-4 pt-3 border-t border-slate-100 dark:border-white/5 flex items-center justify-between text-xs font-bold text-purple-600 dark:text-purple-400 hover:underline cursor-pointer">
                   <span>{tip.action}</span>
                   <span>→</span>
                 </div>

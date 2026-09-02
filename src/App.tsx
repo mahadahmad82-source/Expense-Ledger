@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ExpenseProvider, useExpense } from './context/ExpenseContext';
 import { Navbar } from './components/Navbar';
 import { Sidebar } from './components/Sidebar';
@@ -9,6 +9,7 @@ import { TransferModal } from './components/TransferModal';
 import { ReceiptViewerModal } from './components/ReceiptViewerModal';
 import { PWAInstallBanner } from './components/PWAInstallBanner';
 import { BiometricLockOverlay } from './components/BiometricLockOverlay';
+import { StartFreshModal } from './components/StartFreshModal';
 
 // Views
 import { DashboardView } from './views/DashboardView';
@@ -23,12 +24,13 @@ import { SmartTipsView } from './views/SmartTipsView';
 import { SettingsView } from './views/SettingsView';
 
 const MainAppContent: React.FC = () => {
-  const { activeTab } = useExpense();
+  const { activeTab, theme } = useExpense();
+  const [isStartFreshOpen, setIsStartFreshOpen] = useState(false);
 
   const renderActiveView = () => {
     switch (activeTab) {
       case 'dashboard':
-        return <DashboardView />;
+        return <DashboardView onOpenStartFresh={() => setIsStartFreshOpen(true)} />;
       case 'transactions':
         return <TransactionsView />;
       case 'ledgers':
@@ -46,29 +48,29 @@ const MainAppContent: React.FC = () => {
       case 'tips':
         return <SmartTipsView />;
       case 'settings':
-        return <SettingsView />;
+        return <SettingsView onOpenStartFresh={() => setIsStartFreshOpen(true)} />;
       default:
-        return <DashboardView />;
+        return <DashboardView onOpenStartFresh={() => setIsStartFreshOpen(true)} />;
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0514] text-white flex flex-col selection:bg-purple-500/30 selection:text-purple-200 font-sans antialiased relative overflow-x-hidden">
+    <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-[#0a0514] dark:text-white flex flex-col selection:bg-purple-500/30 selection:text-purple-200 font-sans antialiased relative overflow-x-hidden transition-colors duration-200">
       
       {/* Sleek Interface Ambient Gradient Orbs */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
-        <div className="absolute top-[-200px] left-[-100px] w-[600px] h-[600px] bg-purple-600/30 rounded-full blur-[120px] pointer-events-none" />
-        <div className="absolute bottom-[-150px] right-[-50px] w-[500px] h-[500px] bg-blue-600/20 rounded-full blur-[100px] pointer-events-none" />
-        <div className="absolute top-[45%] left-[25%] w-[400px] h-[400px] bg-indigo-600/15 rounded-full blur-[140px] pointer-events-none" />
+        <div className="absolute top-[-200px] left-[-100px] w-[600px] h-[600px] bg-purple-500/15 dark:bg-purple-600/30 rounded-full blur-[140px] pointer-events-none" />
+        <div className="absolute bottom-[-150px] right-[-50px] w-[500px] h-[500px] bg-blue-500/10 dark:bg-blue-600/20 rounded-full blur-[120px] pointer-events-none" />
+        <div className="absolute top-[45%] left-[25%] w-[400px] h-[400px] bg-indigo-500/10 dark:bg-indigo-600/15 rounded-full blur-[140px] pointer-events-none" />
       </div>
 
       {/* Top Navbar */}
-      <Navbar />
+      <Navbar onOpenStartFresh={() => setIsStartFreshOpen(true)} />
 
       {/* Main Body with Desktop Sidebar + View Container */}
-      <div className="relative z-10 flex-1 flex max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 gap-6">
+      <div className="relative z-10 flex-1 flex max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-6 gap-6">
         {/* Desktop Sidebar */}
-        <Sidebar />
+        <Sidebar onOpenStartFresh={() => setIsStartFreshOpen(true)} />
 
         {/* Dynamic View Container */}
         <main className="flex-1 w-full min-w-0">
@@ -77,7 +79,7 @@ const MainAppContent: React.FC = () => {
       </div>
 
       {/* Mobile Bottom Navigation */}
-      <BottomNav />
+      <BottomNav onOpenStartFresh={() => setIsStartFreshOpen(true)} />
 
       {/* Interactive Global Modals & Overlays */}
       <AddTransactionModal />
@@ -86,6 +88,7 @@ const MainAppContent: React.FC = () => {
       <ReceiptViewerModal />
       <PWAInstallBanner />
       <BiometricLockOverlay />
+      <StartFreshModal isOpen={isStartFreshOpen} onClose={() => setIsStartFreshOpen(false)} />
     </div>
   );
 };
