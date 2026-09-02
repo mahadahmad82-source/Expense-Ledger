@@ -26,7 +26,9 @@ import {
   Check,
   Zap,
   HelpCircle,
-  FileSpreadsheet
+  FileSpreadsheet,
+  LogOut,
+  UserCheck
 } from 'lucide-react';
 import { formatPKR } from '../lib/formatters';
 import { renderCategoryIcon } from '../lib/icons';
@@ -37,6 +39,10 @@ interface SettingsViewProps {
 
 export const SettingsView: React.FC<SettingsViewProps> = ({ onOpenStartFresh }) => {
   const {
+    accounts,
+    currentAccount,
+    setIsAccountModalOpen,
+    logout,
     profiles,
     activeProfile,
     switchProfile,
@@ -309,7 +315,76 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onOpenStartFresh }) 
         </div>
       </div>
 
-      {/* 2. Profile Management */}
+      {/* 2. Account & Authentication Management */}
+      {currentAccount && (
+        <div className="rounded-3xl bg-white/70 dark:bg-slate-900/60 border border-slate-200 dark:border-white/10 p-6 backdrop-blur-xl shadow-xl space-y-4 transition-colors">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <UserCheck className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white">Active Account</h3>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  Profiles and data below are securely saved inside this account
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setIsAccountModalOpen(true)}
+                className="flex items-center gap-1.5 rounded-xl bg-purple-600/10 hover:bg-purple-600/20 text-purple-700 dark:text-purple-300 border border-purple-500/20 px-3 py-1.5 text-xs font-bold transition-all"
+              >
+                <span>Switch Account ({accounts.length})</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => logout()}
+                className="flex items-center gap-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-700 dark:text-rose-300 border border-rose-500/20 px-3 py-1.5 text-xs font-bold transition-all"
+                title="Log out to login screen"
+              >
+                <LogOut className="h-3.5 w-3.5" />
+                <span>Log Out</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between p-4 rounded-2xl bg-purple-500/5 dark:bg-white/5 border border-purple-500/20">
+            <div className="flex items-center gap-3">
+              <img
+                src={currentAccount.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150'}
+                alt={currentAccount.name}
+                className="h-12 w-12 rounded-2xl object-cover ring-2 ring-purple-500/30"
+              />
+              <div>
+                <div className="flex items-center gap-2">
+                  <h4 className="text-sm font-bold text-slate-900 dark:text-white">{currentAccount.name}</h4>
+                  {currentAccount.is_owner && (
+                    <span className="rounded-full bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 px-2 py-0.5 text-[9px] font-black uppercase">
+                      Owner Account
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-slate-500 dark:text-slate-400">{currentAccount.email}</p>
+                <p className="text-[10px] text-purple-600 dark:text-purple-400 mt-0.5">
+                  Account ID: <code className="font-mono">{currentAccount.id}</code> • Profiles inside: {profiles.length}
+                </p>
+              </div>
+            </div>
+
+            <div className="hidden sm:flex flex-col items-end gap-1 text-[11px] text-slate-500 dark:text-slate-400">
+              <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-semibold">
+                <span className="h-2 w-2 rounded-full bg-emerald-500 inline-block" />
+                Active Session
+              </span>
+              <span className="text-[10px]">Isolated Local Storage</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 3. Profile Management */}
       <div className="rounded-3xl bg-white/70 dark:bg-slate-900/60 border border-slate-200 dark:border-white/10 p-6 backdrop-blur-xl shadow-xl space-y-4 transition-colors">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
@@ -569,6 +644,39 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onOpenStartFresh }) 
             <Trash2 className="h-4 w-4 text-rose-500" />
             <span>Clear Transactions</span>
           </button>
+        </div>
+      </div>
+
+      {/* 7. About Application & Icon Branding */}
+      <div className="rounded-3xl bg-white/70 dark:bg-slate-900/60 border border-slate-200 dark:border-white/10 p-6 backdrop-blur-xl shadow-xl transition-colors">
+        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 text-center sm:text-left">
+          <div className="relative h-20 w-20 shrink-0 rounded-3xl overflow-hidden shadow-2xl shadow-purple-500/30 ring-2 ring-purple-500/30 bg-slate-900">
+            <img
+              src="/app-icon.png"
+              alt="ExpensePK Official App Icon"
+              className="h-full w-full object-cover"
+              referrerPolicy="no-referrer"
+            />
+          </div>
+          <div className="space-y-1">
+            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
+              <h4 className="text-base font-bold text-slate-900 dark:text-white">
+                ExpensePK
+              </h4>
+              <span className="rounded-full bg-purple-500/20 px-2.5 py-0.5 text-[10px] font-black uppercase text-purple-700 dark:text-purple-300 border border-purple-500/30">
+                v2.4 Pro
+              </span>
+              <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
+                Offline PWA
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Personal & Multi-Account Financial Tracker tailored for Pakistani Rupees (PKR / ₨).
+            </p>
+            <p className="text-[11px] text-slate-400 dark:text-slate-500 pt-1">
+              Protected by Local Encrypted Storage & Biometric Locks. All data stays strictly on your device.
+            </p>
+          </div>
         </div>
       </div>
 

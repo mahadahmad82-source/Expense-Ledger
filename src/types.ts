@@ -8,11 +8,25 @@ export type WalletType = 'cash' | 'bank' | 'easypaisa' | 'jazzcash' | 'credit_ca
 export type BudgetType = 'overall' | 'category' | 'wallet';
 export type ThemeMode = 'dark' | 'light' | 'system';
 
+export interface UserAccount {
+  id: string;
+  name: string;
+  username: string;
+  email: string;
+  password?: string;
+  avatar?: string;
+  is_owner?: boolean;
+  phone?: string;
+  created_at: string;
+}
+
 export interface UserProfile {
   id: string;
+  account_id?: string;
   name: string;
   avatar: string;
   email?: string;
+  password?: string;
   is_default?: boolean;
   created_at: string;
 }

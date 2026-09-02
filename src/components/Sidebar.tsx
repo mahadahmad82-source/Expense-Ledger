@@ -61,10 +61,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenStartFresh }) => {
       
       {/* Brand Header */}
       <div className="flex items-center gap-3 mb-4 px-2">
-        <div className="w-10 h-10 bg-gradient-to-tr from-[#7C3AED] to-[#3B82F6] rounded-xl flex items-center justify-center shadow-lg shadow-purple-500/20 text-white shrink-0">
-          <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
-          </svg>
+        <div className="relative w-10 h-10 rounded-2xl overflow-hidden shadow-lg shadow-purple-500/30 ring-1 ring-purple-500/30 bg-slate-900 shrink-0">
+          <img
+            src="/app-icon.png"
+            alt="ExpensePK Logo"
+            className="w-full h-full object-cover"
+            referrerPolicy="no-referrer"
+          />
         </div>
         <span className="font-bold text-xl tracking-tight text-slate-900 dark:text-white">
           Expense<span className="text-purple-600 dark:text-purple-400">PK</span>

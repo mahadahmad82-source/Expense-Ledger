@@ -58,8 +58,13 @@ export const PWAInstallBanner: React.FC = () => {
     <div className="fixed bottom-20 lg:bottom-6 right-4 z-40 max-w-sm rounded-3xl bg-gradient-to-r from-purple-900/90 via-indigo-900/90 to-slate-900/90 border border-purple-500/30 p-4 shadow-2xl backdrop-blur-2xl animate-in slide-in-from-bottom-5 duration-300">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-tr from-purple-500 to-pink-500 text-white shadow-lg shadow-purple-500/30">
-            <Smartphone className="h-6 w-6" />
+          <div className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl overflow-hidden shadow-lg shadow-purple-500/30 ring-1 ring-purple-400/30 bg-slate-900">
+            <img
+              src="/app-icon.png"
+              alt="ExpensePK App Icon"
+              className="h-full w-full object-cover"
+              referrerPolicy="no-referrer"
+            />
           </div>
           <div>
             <h4 className="text-xs font-bold text-white flex items-center gap-1.5">

@@ -16,7 +16,11 @@ import {
   ChevronRight,
   CheckCircle2,
   PiggyBank,
-  RefreshCw
+  RefreshCw,
+  LogOut,
+  Users,
+  ShieldCheck,
+  UserCheck
 } from 'lucide-react';
 import {
   AreaChart,
@@ -38,6 +42,10 @@ interface DashboardViewProps {
 
 export const DashboardView: React.FC<DashboardViewProps> = ({ onOpenStartFresh }) => {
   const {
+    currentAccount,
+    accounts,
+    setIsAccountModalOpen,
+    logout,
     activeProfile,
     wallets,
     transactions,
@@ -141,6 +149,79 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onOpenStartFresh }
 
   return (
     <div className="space-y-6 pb-24 lg:pb-8">
+      
+      {/* Top Account & Session Navigation Bar for Quick Account Switching and Direct Logout */}
+      {currentAccount && (
+        <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 sm:p-4 rounded-3xl bg-white/75 dark:bg-slate-900/60 border border-slate-200 dark:border-white/10 shadow-lg backdrop-blur-xl transition-all">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="relative shrink-0">
+              <img
+                src={currentAccount.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150'}
+                alt={currentAccount.name}
+                className="h-10 w-10 sm:h-11 sm:w-11 rounded-2xl object-cover ring-2 ring-purple-500/30"
+              />
+              <span className="absolute -bottom-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-emerald-500 ring-2 ring-white dark:ring-slate-900">
+                <span className="h-1.5 w-1.5 rounded-full bg-white animate-ping" />
+              </span>
+            </div>
+
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5">
+                <h2 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white truncate">
+                  {currentAccount.name}
+                </h2>
+                {currentAccount.is_owner && (
+                  <span className="shrink-0 rounded-full bg-emerald-500/20 px-2 py-0.5 text-[9px] font-black uppercase text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
+                    Owner
+                  </span>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400">
+                {currentAccount.username && (
+                  <span className="font-mono text-purple-600 dark:text-purple-400 font-semibold">
+                    @{currentAccount.username}
+                  </span>
+                )}
+                <span className="hidden sm:inline">•</span>
+                <span className="hidden sm:inline truncate">{currentAccount.email}</span>
+                <span>•</span>
+                <span className="text-[10px] font-semibold text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-900/40 px-1.5 py-0.2 rounded-md">
+                  {activeProfile.name}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Action Buttons: Switch Account and Direct Logout */}
+          <div className="flex items-center gap-2 shrink-0 ml-auto">
+            <button
+              id="dashboard-switch-account-btn"
+              type="button"
+              onClick={() => setIsAccountModalOpen(true)}
+              className="flex items-center gap-1.5 rounded-2xl bg-purple-600/10 hover:bg-purple-600/20 text-purple-700 dark:text-purple-300 border border-purple-500/20 px-3.5 py-2 text-xs font-bold transition-all active:scale-95"
+              title="Switch between your accounts"
+            >
+              <Users className="h-4 w-4" />
+              <span className="hidden sm:inline">Switch Account</span>
+              <span className="rounded-full bg-purple-600/20 px-1.5 py-0.2 text-[10px]">
+                {accounts.length}
+              </span>
+            </button>
+
+            <button
+              id="dashboard-logout-btn"
+              type="button"
+              onClick={() => logout()}
+              className="flex items-center gap-1.5 rounded-2xl bg-rose-500/10 hover:bg-rose-500 text-rose-600 dark:text-rose-400 hover:text-white border border-rose-500/25 px-3.5 py-2 text-xs font-bold shadow-sm transition-all active:scale-95"
+              title="Log out and return to login screen"
+            >
+              <LogOut className="h-4 w-4" />
+              <span>Log Out</span>
+            </button>
+          </div>
+        </div>
+      )}
       
       {/* Top Banner: Total Balance Hero Card matching Sleek Interface */}
       <div className="relative overflow-hidden rounded-[32px] bg-gradient-to-br from-purple-600 via-indigo-700 to-[#3B82F6] border border-white/20 p-6 sm:p-8 shadow-2xl backdrop-blur-2xl text-white">

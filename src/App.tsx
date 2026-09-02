@@ -10,8 +10,11 @@ import { ReceiptViewerModal } from './components/ReceiptViewerModal';
 import { PWAInstallBanner } from './components/PWAInstallBanner';
 import { BiometricLockOverlay } from './components/BiometricLockOverlay';
 import { StartFreshModal } from './components/StartFreshModal';
+import { AccountSwitcherModal } from './components/AccountSwitcherModal';
+import { ProfilePasswordModal } from './components/ProfilePasswordModal';
 
 // Views
+import { LoginView } from './views/LoginView';
 import { DashboardView } from './views/DashboardView';
 import { TransactionsView } from './views/TransactionsView';
 import { LedgersView } from './views/LedgersView';
@@ -24,8 +27,13 @@ import { SmartTipsView } from './views/SmartTipsView';
 import { SettingsView } from './views/SettingsView';
 
 const MainAppContent: React.FC = () => {
-  const { activeTab, theme } = useExpense();
+  const { currentAccount, isAccountModalOpen, setIsAccountModalOpen, activeTab, theme } = useExpense();
   const [isStartFreshOpen, setIsStartFreshOpen] = useState(false);
+
+  // If no account is logged in, show the Login/Registration page
+  if (!currentAccount) {
+    return <LoginView />;
+  }
 
   const renderActiveView = () => {
     switch (activeTab) {
@@ -89,6 +97,8 @@ const MainAppContent: React.FC = () => {
       <PWAInstallBanner />
       <BiometricLockOverlay />
       <StartFreshModal isOpen={isStartFreshOpen} onClose={() => setIsStartFreshOpen(false)} />
+      <AccountSwitcherModal isOpen={isAccountModalOpen} onClose={() => setIsAccountModalOpen(false)} />
+      <ProfilePasswordModal />
     </div>
   );
 };

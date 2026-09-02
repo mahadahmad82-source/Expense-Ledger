@@ -13,7 +13,8 @@ import {
   ShieldCheck,
   Check,
   Sparkles,
-  Download
+  Download,
+  LogOut
 } from 'lucide-react';
 import { formatPKR } from '../lib/formatters';
 
@@ -23,6 +24,9 @@ interface NavbarProps {
 
 export const Navbar: React.FC<NavbarProps> = ({ onOpenStartFresh }) => {
   const {
+    currentAccount,
+    setIsAccountModalOpen,
+    logout,
     profiles,
     activeProfile,
     switchProfile,
@@ -67,8 +71,13 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenStartFresh }) => {
             onClick={() => setActiveTab('dashboard')}
             className="flex items-center gap-2.5 cursor-pointer group"
           >
-            <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-tr from-[#7C3AED] to-[#3B82F6] p-0.5 shadow-lg shadow-purple-500/25 group-hover:scale-105 transition-transform">
-              <span className="font-black text-white text-base">₨</span>
+            <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl overflow-hidden shadow-lg shadow-purple-500/30 ring-1 ring-purple-500/30 group-hover:scale-105 transition-transform bg-slate-900">
+              <img
+                src="/app-icon.png"
+                alt="ExpensePK Icon"
+                className="h-full w-full object-cover"
+                referrerPolicy="no-referrer"
+              />
             </div>
             <div className="hidden sm:block">
               <div className="flex items-center gap-1.5">
@@ -100,9 +109,33 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenStartFresh }) => {
 
             {/* Profile Dropdown Menu */}
             {isProfileMenuOpen && (
-              <div className="absolute left-0 mt-2 w-64 rounded-3xl bg-white dark:bg-[#0e0720]/95 border border-slate-200 dark:border-white/15 p-2 shadow-2xl backdrop-blur-2xl z-50 animate-in fade-in zoom-in-95 duration-150">
-                <div className="px-3 py-2 border-b border-slate-100 dark:border-white/10 mb-1">
-                  <p className="text-[11px] font-semibold text-slate-500 dark:text-white/50 uppercase tracking-wider">Switch Profile</p>
+              <div className="absolute left-0 mt-2 w-72 rounded-3xl bg-white dark:bg-[#0e0720]/95 border border-slate-200 dark:border-white/15 p-2.5 shadow-2xl backdrop-blur-2xl z-50 animate-in fade-in zoom-in-95 duration-150">
+                {/* Linked Account info */}
+                {currentAccount && (
+                  <div className="px-3 py-2 bg-purple-50/70 dark:bg-white/5 rounded-2xl border border-purple-100 dark:border-white/10 mb-2 flex items-center justify-between">
+                    <div className="min-w-0 pr-2">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] uppercase font-bold text-purple-600 dark:text-purple-400 tracking-wider">Account</span>
+                        {currentAccount.is_owner && (
+                          <span className="rounded bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 text-[9px] font-bold px-1">Owner</span>
+                        )}
+                      </div>
+                      <p className="text-xs font-bold text-slate-800 dark:text-white truncate">{currentAccount.name}</p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setIsProfileMenuOpen(false);
+                        setIsAccountModalOpen(true);
+                      }}
+                      className="text-[11px] font-semibold text-purple-600 dark:text-purple-400 hover:underline shrink-0"
+                    >
+                      Switch
+                    </button>
+                  </div>
+                )}
+
+                <div className="px-2 py-1 mb-1">
+                  <p className="text-[11px] font-semibold text-slate-500 dark:text-white/50 uppercase tracking-wider">Profiles in this Account</p>
                 </div>
                 <div className="space-y-1">
                   {profiles.map((p) => (
@@ -127,7 +160,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenStartFresh }) => {
                   ))}
                 </div>
 
-                <div className="mt-2 pt-2 border-t border-slate-100 dark:border-white/10">
+                <div className="mt-2 pt-2 border-t border-slate-100 dark:border-white/10 space-y-1">
                   <button
                     onClick={() => {
                       setIsNewProfileModalOpen(true);
@@ -260,6 +293,40 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenStartFresh }) => {
               <Moon className="h-4 w-4 text-purple-600" />
             )}
           </button>
+
+          {/* Account Profile Trigger */}
+          {currentAccount && (
+            <div className="flex items-center gap-1.5">
+              <button
+                id="account-header-trigger"
+                onClick={() => setIsAccountModalOpen(true)}
+                title={`Logged in as ${currentAccount.name} (${currentAccount.email}) - Click to manage or switch accounts`}
+                className="flex items-center gap-2 rounded-2xl bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-500/30 pl-1.5 pr-2.5 py-1 text-xs font-semibold text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/50 transition-colors"
+              >
+                <img
+                  src={currentAccount.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150'}
+                  alt={currentAccount.name}
+                  className="w-6 h-6 rounded-full object-cover ring-1 ring-purple-400 shrink-0"
+                />
+                <span className="hidden sm:inline truncate max-w-[90px]">{currentAccount.name}</span>
+                {currentAccount.is_owner && (
+                  <span className="hidden md:inline-block rounded bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 px-1 py-0.5 text-[9px] font-extrabold uppercase">
+                    Owner
+                  </span>
+                )}
+              </button>
+
+              <button
+                id="navbar-logout-btn"
+                onClick={() => logout()}
+                title="Log Out to Login Screen"
+                className="flex items-center gap-1 rounded-2xl bg-rose-500/10 hover:bg-rose-500 text-rose-600 dark:text-rose-400 hover:text-white border border-rose-500/20 p-2 sm:px-2.5 sm:py-1 text-xs font-bold transition-all active:scale-95"
+              >
+                <LogOut className="h-4 w-4 shrink-0" />
+                <span className="hidden lg:inline">Log Out</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
 

@@ -15,7 +15,10 @@ import {
   Sparkles,
   Settings,
   X,
-  ArrowRightLeft
+  ArrowRightLeft,
+  LogOut,
+  Users,
+  User
 } from 'lucide-react';
 
 interface BottomNavProps {
@@ -24,6 +27,9 @@ interface BottomNavProps {
 
 export const BottomNav: React.FC<BottomNavProps> = ({ onOpenStartFresh }) => {
   const {
+    currentAccount,
+    setIsAccountModalOpen,
+    logout,
     activeTab,
     setActiveTab,
     setIsAddTxOpen,
@@ -167,6 +173,60 @@ export const BottomNav: React.FC<BottomNavProps> = ({ onOpenStartFresh }) => {
                 </div>
               </button>
             </div>
+
+            {/* Account & Session Controls in Mobile Drawer */}
+            {currentAccount && (
+              <div className="p-3.5 rounded-2xl bg-purple-500/10 border border-purple-500/20 mb-4 space-y-3">
+                <div className="flex items-center gap-2.5">
+                  <img
+                    src={currentAccount.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150'}
+                    alt={currentAccount.name}
+                    className="h-9 w-9 rounded-xl object-cover ring-1 ring-purple-400 shrink-0"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                        {currentAccount.name}
+                      </p>
+                      {currentAccount.is_owner && (
+                        <span className="rounded bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 px-1 py-0.2 text-[8px] font-black uppercase">
+                          Owner
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                      {currentAccount.username ? `@${currentAccount.username}` : currentAccount.email}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 pt-1 border-t border-purple-500/15">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsMenuOpen(false);
+                      setIsAccountModalOpen(true);
+                    }}
+                    className="flex items-center justify-center gap-1.5 rounded-xl bg-purple-600/15 hover:bg-purple-600/25 text-purple-700 dark:text-purple-300 py-2 text-xs font-bold border border-purple-500/20"
+                  >
+                    <Users className="h-3.5 w-3.5" />
+                    <span>Switch</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsMenuOpen(false);
+                      logout();
+                    }}
+                    className="flex items-center justify-center gap-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500 text-rose-600 dark:text-rose-400 hover:text-white py-2 text-xs font-bold border border-rose-500/25 transition-colors"
+                  >
+                    <LogOut className="h-3.5 w-3.5" />
+                    <span>Log Out</span>
+                  </button>
+                </div>
+              </div>
+            )}
 
             <div className="flex gap-2">
               <button

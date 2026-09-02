@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, ReactNode } from 'react';
 import {
+  UserAccount,
   UserProfile,
   Wallet,
   Category,
@@ -34,6 +35,19 @@ export interface StartingWalletInput {
 }
 
 interface ExpenseContextType {
+  // Account & Authentication Management
+  accounts: UserAccount[];
+  currentAccount: UserAccount | null;
+  isAccountModalOpen: boolean;
+  setIsAccountModalOpen: (open: boolean) => void;
+  login: (emailOrUsernameOrName: string, password?: string) => { success: boolean; message: string };
+  logout: () => void;
+  registerAccount: (name: string, username: string, email: string, password?: string, initialProfileName?: string, initialProfilePassword?: string) => { success: boolean; message: string; account?: UserAccount };
+  switchAccount: (accountId: string) => { success: boolean; message: string };
+  changeAccountPassword: (accountId: string, oldPassword: string, newPassword: string) => { success: boolean; message: string };
+  updateAccount: (accountId: string, updates: Partial<UserAccount>) => void;
+  deleteAccount: (accountId: string) => { success: boolean; message: string };
+
   // State
   profiles: UserProfile[];
   activeProfile: UserProfile;
@@ -78,8 +92,12 @@ interface ExpenseContextType {
   toggleBiometricAuth: () => Promise<boolean>;
 
   // Profile Management
+  pendingProfileSwitch: UserProfile | null;
+  setPendingProfileSwitch: (profile: UserProfile | null) => void;
   switchProfile: (profileId: string) => void;
-  addProfile: (name: string, avatar?: string, email?: string) => UserProfile;
+  verifyAndSwitchProfile: (profileId: string, passwordAttempt: string) => { success: boolean; message: string };
+  setProfilePassword: (profileId: string, password?: string) => { success: boolean; message: string };
+  addProfile: (name: string, avatar?: string, email?: string, password?: string) => UserProfile;
   updateProfile: (id: string, updates: Partial<UserProfile>) => void;
   deleteProfile: (id: string) => void;
 
@@ -144,6 +162,9 @@ interface ExpenseContextType {
 const ExpenseContext = createContext<ExpenseContextType | undefined>(undefined);
 
 const STORAGE_KEYS = {
+  ACCOUNTS: 'expensepk_accounts_v3',
+  ACTIVE_ACCOUNT_ID: 'expensepk_active_account_id_v3',
+  ACCOUNT_DATA_PREFIX: 'expensepk_acc_data_',
   PROFILES: 'expensepk_profiles_v2',
   ACTIVE_PROFILE: 'expensepk_active_profile_v2',
   WALLETS: 'expensepk_wallets_v2',
@@ -157,6 +178,143 @@ const STORAGE_KEYS = {
   BIOMETRIC: 'expensepk_biometric_v2',
   PUSH: 'expensepk_push_v2',
 };
+
+export const DEFAULT_OWNER_ACCOUNT: UserAccount = {
+  id: 'acc-mahad',
+  name: 'Mahad Ahmad',
+  username: 'mahadahmad82',
+  email: 'mahadahmad82@gmail.com',
+  password: 'google.pk',
+  avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
+  is_owner: true,
+  created_at: '2026-01-01T00:00:00.000Z',
+};
+
+interface AccountFinancialData {
+  profiles: UserProfile[];
+  activeProfileId: string;
+  wallets: Wallet[];
+  categories: Category[];
+  transactions: Transaction[];
+  budgets: Budget[];
+  savingsGoals: SavingsGoal[];
+  bills: Bill[];
+  ledgers: LedgerMonth[];
+}
+
+function loadAccountData(accountId: string): AccountFinancialData {
+  const accountDataKey = `${STORAGE_KEYS.ACCOUNT_DATA_PREFIX}${accountId}`;
+  const savedAccountData = localStorage.getItem(accountDataKey);
+
+  if (savedAccountData) {
+    try {
+      const parsed = JSON.parse(savedAccountData);
+      return {
+        profiles: parsed.profiles || INITIAL_PROFILES,
+        activeProfileId: parsed.activeProfileId || (parsed.profiles?.[0]?.id || 'prof-personal'),
+        wallets: parsed.wallets || INITIAL_WALLETS,
+        categories: parsed.categories || DEFAULT_CATEGORIES,
+        transactions: parsed.transactions || INITIAL_TRANSACTIONS,
+        budgets: parsed.budgets || INITIAL_BUDGETS,
+        savingsGoals: parsed.savingsGoals || INITIAL_SAVINGS_GOALS,
+        bills: parsed.bills || INITIAL_BILLS,
+        ledgers: parsed.ledgers || INITIAL_LEDGERS,
+      };
+    } catch (e) {
+      console.error('Error parsing account data:', e);
+    }
+  }
+
+  // If this is the owner account 'acc-mahad' and no specific account data exists yet,
+  // MIGRATE from existing legacy keys so user experiences ZERO DATA LOSS!
+  if (accountId === 'acc-mahad') {
+    const legacyProfiles = localStorage.getItem(STORAGE_KEYS.PROFILES);
+    const legacyActiveProfile = localStorage.getItem(STORAGE_KEYS.ACTIVE_PROFILE);
+    const legacyWallets = localStorage.getItem(STORAGE_KEYS.WALLETS);
+    const legacyCategories = localStorage.getItem(STORAGE_KEYS.CATEGORIES);
+    const legacyTransactions = localStorage.getItem(STORAGE_KEYS.TRANSACTIONS);
+    const legacyBudgets = localStorage.getItem(STORAGE_KEYS.BUDGETS);
+    const legacySavings = localStorage.getItem(STORAGE_KEYS.SAVINGS);
+    const legacyBills = localStorage.getItem(STORAGE_KEYS.BILLS);
+    const legacyLedgers = localStorage.getItem(STORAGE_KEYS.LEDGERS);
+
+    const loadedProfiles: UserProfile[] = legacyProfiles ? JSON.parse(legacyProfiles) : INITIAL_PROFILES;
+    const loadedActiveProfileId: string = legacyActiveProfile || loadedProfiles[0]?.id || 'prof-personal';
+    const loadedWallets: Wallet[] = legacyWallets ? JSON.parse(legacyWallets) : INITIAL_WALLETS;
+    const loadedCategories: Category[] = legacyCategories ? JSON.parse(legacyCategories) : DEFAULT_CATEGORIES;
+    const loadedTransactions: Transaction[] = legacyTransactions ? JSON.parse(legacyTransactions) : INITIAL_TRANSACTIONS;
+    const loadedBudgets: Budget[] = legacyBudgets ? JSON.parse(legacyBudgets) : INITIAL_BUDGETS;
+    const loadedSavings: SavingsGoal[] = legacySavings ? JSON.parse(legacySavings) : INITIAL_SAVINGS_GOALS;
+    const loadedBills: Bill[] = legacyBills ? JSON.parse(legacyBills) : INITIAL_BILLS;
+    const loadedLedgers: LedgerMonth[] = legacyLedgers ? JSON.parse(legacyLedgers) : INITIAL_LEDGERS;
+
+    // Attach account_id
+    const taggedProfiles = loadedProfiles.map(p => ({ ...p, account_id: 'acc-mahad' }));
+
+    const migratedBundle: AccountFinancialData = {
+      profiles: taggedProfiles,
+      activeProfileId: loadedActiveProfileId,
+      wallets: loadedWallets,
+      categories: loadedCategories,
+      transactions: loadedTransactions,
+      budgets: loadedBudgets,
+      savingsGoals: loadedSavings,
+      bills: loadedBills,
+      ledgers: loadedLedgers,
+    };
+
+    // Save immediately so it's persisted under acc-mahad
+    localStorage.setItem(accountDataKey, JSON.stringify(migratedBundle));
+    return migratedBundle;
+  }
+
+  // Default clean starter set for a newly created account
+  const defaultProfId = `prof-${Date.now()}`;
+  return {
+    profiles: [
+      {
+        id: defaultProfId,
+        account_id: accountId,
+        name: 'Personal Account',
+        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+        email: '',
+        is_default: true,
+        created_at: new Date().toISOString(),
+      }
+    ],
+    activeProfileId: defaultProfId,
+    wallets: [
+      {
+        id: `wallet-cash-${Date.now()}`,
+        profile_id: defaultProfId,
+        name: 'Cash in Hand',
+        type: 'cash',
+        balance: 0,
+        initial_balance: 0,
+        color: '#10B981',
+        icon: 'Coins',
+        created_at: new Date().toISOString(),
+      },
+      {
+        id: `wallet-bank-${Date.now()}`,
+        profile_id: defaultProfId,
+        name: 'Bank Account',
+        type: 'bank',
+        balance: 0,
+        initial_balance: 0,
+        color: '#3B82F6',
+        icon: 'Building2',
+        created_at: new Date().toISOString(),
+      }
+    ],
+    categories: DEFAULT_CATEGORIES,
+    transactions: [],
+    budgets: [],
+    savingsGoals: [],
+    bills: [],
+    ledgers: [],
+  };
+}
 
 export const ExpenseProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   // Offline and connectivity detection
@@ -245,51 +403,80 @@ export const ExpenseProvider: React.FC<{ children: ReactNode }> = ({ children })
   const [selectedMonthForLedger, setSelectedMonthForLedger] = useState<LedgerMonth | null>(null);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
 
-  // Core Data Sets with LocalStorage hydration
-  const [profiles, setProfiles] = useState<UserProfile[]>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.PROFILES);
-    return saved ? JSON.parse(saved) : INITIAL_PROFILES;
+  // Accounts State
+  const [accounts, setAccounts] = useState<UserAccount[]>(() => {
+    const saved = localStorage.getItem(STORAGE_KEYS.ACCOUNTS);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const updated = parsed.map((a: UserAccount) => {
+            if (
+              a.id === 'acc-mahad' || 
+              a.email?.toLowerCase() === 'mahadahmad82@gmail.com' ||
+              a.username?.toLowerCase() === 'mahadahmad82' ||
+              a.name?.toLowerCase().includes('mahad')
+            ) {
+              return {
+                ...a,
+                id: 'acc-mahad',
+                name: 'Mahad Ahmad',
+                username: 'mahadahmad82',
+                email: 'mahadahmad82@gmail.com',
+                password: (a.password && a.password !== 'mahad123') ? a.password : 'google.pk',
+                is_owner: true,
+              };
+            }
+            return {
+              ...a,
+              username: a.username || a.email.split('@')[0] || `user_${a.id.slice(-4)}`
+            };
+          });
+          const hasOwner = updated.some(a => a.id === 'acc-mahad');
+          const finalAccounts = hasOwner ? updated : [DEFAULT_OWNER_ACCOUNT, ...updated];
+          localStorage.setItem(STORAGE_KEYS.ACCOUNTS, JSON.stringify(finalAccounts));
+          return finalAccounts;
+        }
+      } catch (e) {
+        console.error('Error parsing accounts:', e);
+      }
+    }
+    return [DEFAULT_OWNER_ACCOUNT];
   });
 
-  const [activeProfileId, setActiveProfileId] = useState<string>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.ACTIVE_PROFILE);
-    return saved || 'prof-personal';
+  const [currentAccount, setCurrentAccount] = useState<UserAccount | null>(() => {
+    const savedActiveId = localStorage.getItem(STORAGE_KEYS.ACTIVE_ACCOUNT_ID);
+    if (savedActiveId === '') {
+      // User explicitly logged out
+      return null;
+    }
+    const savedAccountsStr = localStorage.getItem(STORAGE_KEYS.ACCOUNTS);
+    const accList: UserAccount[] = savedAccountsStr ? JSON.parse(savedAccountsStr) : [DEFAULT_OWNER_ACCOUNT];
+    if (savedActiveId) {
+      const matched = accList.find(a => a.id === savedActiveId);
+      if (matched) return matched;
+    }
+    return accList.find(a => a.id === 'acc-mahad') || DEFAULT_OWNER_ACCOUNT;
   });
 
-  const [allWallets, setAllWallets] = useState<Wallet[]>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.WALLETS);
-    return saved ? JSON.parse(saved) : INITIAL_WALLETS;
-  });
+  const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
+  const [pendingProfileSwitch, setPendingProfileSwitch] = useState<UserProfile | null>(null);
 
-  const [categories, setCategories] = useState<Category[]>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.CATEGORIES);
-    return saved ? JSON.parse(saved) : DEFAULT_CATEGORIES;
-  });
+  // Core Data Sets with Account-Scoped hydration (loads existing data seamlessly with zero loss)
+  const initialDataForActive = useMemo(() => {
+    const targetAccId = currentAccount ? currentAccount.id : 'acc-mahad';
+    return loadAccountData(targetAccId);
+  }, []); // Run once on initial render
 
-  const [allTransactions, setAllTransactions] = useState<Transaction[]>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.TRANSACTIONS);
-    return saved ? JSON.parse(saved) : INITIAL_TRANSACTIONS;
-  });
-
-  const [allBudgets, setAllBudgets] = useState<Budget[]>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.BUDGETS);
-    return saved ? JSON.parse(saved) : INITIAL_BUDGETS;
-  });
-
-  const [allSavingsGoals, setAllSavingsGoals] = useState<SavingsGoal[]>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.SAVINGS);
-    return saved ? JSON.parse(saved) : INITIAL_SAVINGS_GOALS;
-  });
-
-  const [allBills, setAllBills] = useState<Bill[]>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.BILLS);
-    return saved ? JSON.parse(saved) : INITIAL_BILLS;
-  });
-
-  const [allLedgers, setAllLedgers] = useState<LedgerMonth[]>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.LEDGERS);
-    return saved ? JSON.parse(saved) : INITIAL_LEDGERS;
-  });
+  const [profiles, setProfiles] = useState<UserProfile[]>(() => initialDataForActive.profiles);
+  const [activeProfileId, setActiveProfileId] = useState<string>(() => initialDataForActive.activeProfileId);
+  const [allWallets, setAllWallets] = useState<Wallet[]>(() => initialDataForActive.wallets);
+  const [categories, setCategories] = useState<Category[]>(() => initialDataForActive.categories);
+  const [allTransactions, setAllTransactions] = useState<Transaction[]>(() => initialDataForActive.transactions);
+  const [allBudgets, setAllBudgets] = useState<Budget[]>(() => initialDataForActive.budgets);
+  const [allSavingsGoals, setAllSavingsGoals] = useState<SavingsGoal[]>(() => initialDataForActive.savingsGoals);
+  const [allBills, setAllBills] = useState<Bill[]>(() => initialDataForActive.bills);
+  const [allLedgers, setAllLedgers] = useState<LedgerMonth[]>(() => initialDataForActive.ledgers);
 
   const [notifications, setNotifications] = useState<AppNotification[]>([
     {
@@ -302,42 +489,40 @@ export const ExpenseProvider: React.FC<{ children: ReactNode }> = ({ children })
     },
   ]);
 
-  // Synchronize to localStorage whenever datasets change
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.PROFILES, JSON.stringify(profiles));
-  }, [profiles]);
+  // Persist current account data to storage
+  const persistAccountData = (accId: string) => {
+    if (!accId) return;
+    const bundle: AccountFinancialData = {
+      profiles,
+      activeProfileId,
+      wallets: allWallets,
+      categories,
+      transactions: allTransactions,
+      budgets: allBudgets,
+      savingsGoals: allSavingsGoals,
+      bills: allBills,
+      ledgers: allLedgers,
+    };
+    localStorage.setItem(`${STORAGE_KEYS.ACCOUNT_DATA_PREFIX}${accId}`, JSON.stringify(bundle));
+
+    if (accId === 'acc-mahad') {
+      localStorage.setItem(STORAGE_KEYS.PROFILES, JSON.stringify(profiles));
+      localStorage.setItem(STORAGE_KEYS.ACTIVE_PROFILE, activeProfileId);
+      localStorage.setItem(STORAGE_KEYS.WALLETS, JSON.stringify(allWallets));
+      localStorage.setItem(STORAGE_KEYS.CATEGORIES, JSON.stringify(categories));
+      localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(allTransactions));
+      localStorage.setItem(STORAGE_KEYS.BUDGETS, JSON.stringify(allBudgets));
+      localStorage.setItem(STORAGE_KEYS.SAVINGS, JSON.stringify(allSavingsGoals));
+      localStorage.setItem(STORAGE_KEYS.BILLS, JSON.stringify(allBills));
+      localStorage.setItem(STORAGE_KEYS.LEDGERS, JSON.stringify(allLedgers));
+    }
+  };
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.ACTIVE_PROFILE, activeProfileId);
-  }, [activeProfileId]);
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.WALLETS, JSON.stringify(allWallets));
-  }, [allWallets]);
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.CATEGORIES, JSON.stringify(categories));
-  }, [categories]);
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(allTransactions));
-  }, [allTransactions]);
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.BUDGETS, JSON.stringify(allBudgets));
-  }, [allBudgets]);
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.SAVINGS, JSON.stringify(allSavingsGoals));
-  }, [allSavingsGoals]);
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.BILLS, JSON.stringify(allBills));
-  }, [allBills]);
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.LEDGERS, JSON.stringify(allLedgers));
-  }, [allLedgers]);
+    if (currentAccount) {
+      persistAccountData(currentAccount.id);
+    }
+  }, [profiles, activeProfileId, allWallets, categories, allTransactions, allBudgets, allSavingsGoals, allBills, allLedgers, currentAccount]);
 
   // Active Profile & Filtered collections
   const activeProfile = useMemo(() => {
@@ -443,17 +628,279 @@ export const ExpenseProvider: React.FC<{ children: ReactNode }> = ({ children })
     });
   }, [transactions, activeProfile.id]);
 
+  // Account Management Actions
+  const switchAccount = (accountId: string): { success: boolean; message: string } => {
+    const target = accounts.find(a => a.id === accountId);
+    if (!target) {
+      return { success: false, message: 'Account not found.' };
+    }
+
+    if (currentAccount) {
+      persistAccountData(currentAccount.id);
+    }
+
+    const data = loadAccountData(target.id);
+    setProfiles(data.profiles);
+    setActiveProfileId(data.activeProfileId);
+    setAllWallets(data.wallets);
+    setCategories(data.categories);
+    setAllTransactions(data.transactions);
+    setAllBudgets(data.budgets);
+    setAllSavingsGoals(data.savingsGoals);
+    setAllBills(data.bills);
+    setAllLedgers(data.ledgers);
+
+    setCurrentAccount(target);
+    localStorage.setItem(STORAGE_KEYS.ACTIVE_ACCOUNT_ID, target.id);
+    setActiveTab('dashboard');
+    return { success: true, message: `Switched to ${target.name} account successfully.` };
+  };
+
+  const login = (emailOrUsernameOrName: string, password?: string): { success: boolean; message: string } => {
+    const query = emailOrUsernameOrName.trim().toLowerCase();
+    const acc = accounts.find(
+      a => (a.username && a.username.toLowerCase() === query) ||
+           a.email.toLowerCase() === query || 
+           a.name.toLowerCase() === query || 
+           a.id.toLowerCase() === query
+    );
+
+    if (!acc) {
+      return { success: false, message: 'Account not found. Please check your username or email.' };
+    }
+
+    if (password !== undefined && password !== null) {
+      const trimmedPass = password.trim();
+      // Owner account credentials override: mahadahmad82 with google.pk
+      const isOwnerPass = acc.id === 'acc-mahad' && trimmedPass === 'google.pk';
+      const isCorrectPass = isOwnerPass || (acc.password && acc.password.trim() === trimmedPass);
+
+      if (!isCorrectPass) {
+        return { success: false, message: 'Incorrect password. Please enter the correct password.' };
+      }
+    }
+
+    return switchAccount(acc.id);
+  };
+
+  const logout = () => {
+    if (currentAccount) {
+      persistAccountData(currentAccount.id);
+    }
+    setCurrentAccount(null);
+    localStorage.setItem(STORAGE_KEYS.ACTIVE_ACCOUNT_ID, '');
+  };
+
+  const registerAccount = (
+    name: string,
+    username: string,
+    email: string,
+    password?: string,
+    initialProfileName?: string,
+    initialProfilePassword?: string
+  ): { success: boolean; message: string; account?: UserAccount } => {
+    const cleanName = name.trim();
+    const cleanUsername = username.trim().toLowerCase().replace(/[^a-z0-9_.]/g, '');
+    const cleanEmail = email.trim().toLowerCase();
+
+    if (!cleanName) {
+      return { success: false, message: 'Please enter account full name.' };
+    }
+    if (!cleanUsername || cleanUsername.length < 3) {
+      return { success: false, message: 'Username must be at least 3 characters (letters, numbers, underscores).' };
+    }
+    if (!cleanEmail || !cleanEmail.includes('@')) {
+      return { success: false, message: 'Please enter a valid email address.' };
+    }
+
+    const usernameExists = accounts.some(a => a.username && a.username.toLowerCase() === cleanUsername);
+    if (usernameExists) {
+      return { success: false, message: 'This username is already taken. Please choose another username.' };
+    }
+
+    const emailExists = accounts.some(a => a.email.toLowerCase() === cleanEmail);
+    if (emailExists) {
+      return { success: false, message: 'An account with this email already exists. Please log in.' };
+    }
+
+    const newId = `acc-${Date.now()}`;
+    const newAccount: UserAccount = {
+      id: newId,
+      name: cleanName,
+      username: cleanUsername,
+      email: cleanEmail,
+      password: password?.trim() || 'password123',
+      avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
+      is_owner: false,
+      created_at: new Date().toISOString(),
+    };
+
+    const newProfId = `prof-${Date.now()}`;
+    const initialProf: UserProfile = {
+      id: newProfId,
+      account_id: newId,
+      name: initialProfileName?.trim() || 'Personal Account',
+      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+      email: cleanEmail,
+      password: initialProfilePassword?.trim() || undefined,
+      is_default: true,
+      created_at: new Date().toISOString(),
+    };
+
+    const initialWallets: Wallet[] = [
+      {
+        id: `w-cash-${Date.now()}`,
+        profile_id: newProfId,
+        name: 'Cash in Hand',
+        type: 'cash',
+        balance: 0,
+        initial_balance: 0,
+        color: '#10B981',
+        icon: 'Coins',
+        created_at: new Date().toISOString(),
+      },
+      {
+        id: `w-bank-${Date.now()}`,
+        profile_id: newProfId,
+        name: 'Bank Account',
+        type: 'bank',
+        balance: 0,
+        initial_balance: 0,
+        color: '#3B82F6',
+        icon: 'Building2',
+        created_at: new Date().toISOString(),
+      }
+    ];
+
+    const initialData: AccountFinancialData = {
+      profiles: [initialProf],
+      activeProfileId: newProfId,
+      wallets: initialWallets,
+      categories: DEFAULT_CATEGORIES,
+      transactions: [],
+      budgets: [],
+      savingsGoals: [],
+      bills: [],
+      ledgers: [],
+    };
+
+    localStorage.setItem(`${STORAGE_KEYS.ACCOUNT_DATA_PREFIX}${newId}`, JSON.stringify(initialData));
+
+    const updatedAccounts = [...accounts, newAccount];
+    setAccounts(updatedAccounts);
+    localStorage.setItem(STORAGE_KEYS.ACCOUNTS, JSON.stringify(updatedAccounts));
+
+    if (currentAccount) {
+      persistAccountData(currentAccount.id);
+    }
+
+    setProfiles(initialData.profiles);
+    setActiveProfileId(newProfId);
+    setAllWallets(initialWallets);
+    setCategories(DEFAULT_CATEGORIES);
+    setAllTransactions([]);
+    setAllBudgets([]);
+    setAllSavingsGoals([]);
+    setAllBills([]);
+    setAllLedgers([]);
+
+    setCurrentAccount(newAccount);
+    localStorage.setItem(STORAGE_KEYS.ACTIVE_ACCOUNT_ID, newId);
+    setActiveTab('dashboard');
+
+    return { success: true, message: `Account for ${cleanName} created successfully!`, account: newAccount };
+  };
+
+  const updateAccount = (accountId: string, updates: Partial<UserAccount>) => {
+    setAccounts(prev => {
+      const updated = prev.map(a => a.id === accountId ? { ...a, ...updates } : a);
+      localStorage.setItem(STORAGE_KEYS.ACCOUNTS, JSON.stringify(updated));
+      return updated;
+    });
+    if (currentAccount && currentAccount.id === accountId) {
+      setCurrentAccount(prev => prev ? { ...prev, ...updates } : null);
+    }
+  };
+
+  const deleteAccount = (accountId: string): { success: boolean; message: string } => {
+    if (accountId === 'acc-mahad') {
+      return { success: false, message: 'Owner account cannot be deleted.' };
+    }
+    const updated = accounts.filter(a => a.id !== accountId);
+    setAccounts(updated);
+    localStorage.setItem(STORAGE_KEYS.ACCOUNTS, JSON.stringify(updated));
+    localStorage.removeItem(`${STORAGE_KEYS.ACCOUNT_DATA_PREFIX}${accountId}`);
+
+    if (currentAccount?.id === accountId) {
+      switchAccount('acc-mahad');
+    }
+    return { success: true, message: 'Account deleted.' };
+  };
+
+  const changeAccountPassword = (accountId: string, oldPassword: string, newPassword: string): { success: boolean; message: string } => {
+    const acc = accounts.find(a => a.id === accountId);
+    if (!acc) return { success: false, message: 'Account not found.' };
+
+    const cleanOld = oldPassword.trim();
+    const cleanNew = newPassword.trim();
+
+    const isMatch = (acc.id === 'acc-mahad' && cleanOld === 'google.pk') || (acc.password && acc.password.trim() === cleanOld);
+    if (!isMatch && acc.password) {
+      return { success: false, message: 'Current password does not match.' };
+    }
+
+    if (!cleanNew || cleanNew.length < 4) {
+      return { success: false, message: 'New password must be at least 4 characters long.' };
+    }
+
+    updateAccount(accountId, { password: cleanNew });
+    return { success: true, message: 'Account password updated successfully.' };
+  };
+
   // Profile Actions
   const switchProfile = (profileId: string) => {
+    const target = profiles.find(p => p.id === profileId);
+    if (!target) return;
+    if (target.id === activeProfileId) return;
+
+    if (target.password && target.password.trim().length > 0) {
+      setPendingProfileSwitch(target);
+      return;
+    }
+
     setActiveProfileId(profileId);
   };
 
-  const addProfile = (name: string, avatar?: string, email?: string): UserProfile => {
+  const verifyAndSwitchProfile = (profileId: string, passwordAttempt: string): { success: boolean; message: string } => {
+    const target = profiles.find(p => p.id === profileId);
+    if (!target) return { success: false, message: 'Profile not found.' };
+
+    if (target.password && target.password.trim() !== passwordAttempt.trim()) {
+      return { success: false, message: 'Incorrect profile password. Please try again.' };
+    }
+
+    setActiveProfileId(profileId);
+    setPendingProfileSwitch(null);
+    return { success: true, message: `Switched to ${target.name} profile successfully.` };
+  };
+
+  const setProfilePassword = (profileId: string, password?: string): { success: boolean; message: string } => {
+    const clean = password?.trim();
+    updateProfile(profileId, { password: clean || undefined });
+    return {
+      success: true,
+      message: clean ? 'Profile password updated successfully.' : 'Profile password removed.'
+    };
+  };
+
+  const addProfile = (name: string, avatar?: string, email?: string, password?: string): UserProfile => {
     const newProfile: UserProfile = {
       id: `prof-${Date.now()}`,
+      account_id: currentAccount?.id || 'acc-mahad',
       name,
       avatar: avatar || `https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=256`,
       email: email || `${name.toLowerCase().replace(/\s+/g, '')}@expensepk.app`,
+      password: password?.trim() || undefined,
       is_default: false,
       created_at: new Date().toISOString(),
     };
@@ -1089,6 +1536,18 @@ export const ExpenseProvider: React.FC<{ children: ReactNode }> = ({ children })
   const resetToInitialData = () => loadDemoData();
 
   const value: ExpenseContextType = {
+    accounts,
+    currentAccount,
+    isAccountModalOpen,
+    setIsAccountModalOpen,
+    login,
+    logout,
+    registerAccount,
+    switchAccount,
+    changeAccountPassword,
+    updateAccount,
+    deleteAccount,
+
     profiles,
     activeProfile,
     wallets,
@@ -1129,7 +1588,11 @@ export const ExpenseProvider: React.FC<{ children: ReactNode }> = ({ children })
     setIsBiometricUnlocked,
     toggleBiometricAuth,
 
+    pendingProfileSwitch,
+    setPendingProfileSwitch,
     switchProfile,
+    verifyAndSwitchProfile,
+    setProfilePassword,
     addProfile,
     updateProfile,
     deleteProfile,
