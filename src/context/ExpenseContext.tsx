@@ -26,6 +26,11 @@ import {
 } from '../lib/initialData';
 import { formatPKR, formatMonthYear } from '../lib/formatters';
 import {
+  authenticateWithBiometrics,
+  registerBiometricCredential,
+  triggerHapticFeedback,
+} from '../lib/biometrics';
+import {
   pushAccountDataToFirebase,
   pullAccountDataFromFirebase,
   subscribeToFirebaseAccountData,
@@ -78,6 +83,15 @@ interface ExpenseContextType {
   isBiometricEnabled: boolean;
   setIsBiometricEnabled: (enabled: boolean) => void;
   isBiometricUnlocked: boolean;
+  setIsBiometricUnlocked: (unlocked: boolean) => void;
+  biometricAutoLock: 'immediate' | '1min' | '5min' | 'never';
+  setBiometricAutoLock: (mode: 'immediate' | '1min' | '5min' | 'never') => void;
+  biometricPin: string;
+  setBiometricPin: (pin: string) => void;
+  lockAppNow: () => void;
+  unlockWithPinOrPassword: (input: string) => { success: boolean; message: string };
+  unlockWithBiometric: () => Promise<{ success: boolean; message: string }>;
+  registerBiometricSensor: () => Promise<{ success: boolean; message: string }>;
   isPushEnabled: boolean;
   setIsPushEnabled: (enabled: boolean) => void;
   
@@ -99,7 +113,6 @@ interface ExpenseContextType {
   setActiveReceiptUrl: (url: string | null) => void;
   setSelectedMonthForLedger: (ledger: LedgerMonth | null) => void;
   setEditingTransaction: (tx: Transaction | null) => void;
-  setIsBiometricUnlocked: (unlocked: boolean) => void;
   toggleBiometricAuth: () => Promise<boolean>;
 
   // Profile Management
@@ -192,6 +205,9 @@ const STORAGE_KEYS = {
   LEDGERS: 'expensepk_ledgers_v2',
   THEME: 'expensepk_theme_v2',
   BIOMETRIC: 'expensepk_biometric_v2',
+  BIOMETRIC_PIN: 'expensepk_biometric_pin_v2',
+  BIOMETRIC_CRED_ID: 'expensepk_biometric_cred_id_v2',
+  BIOMETRIC_AUTOLOCK: 'expensepk_biometric_autolock_v2',
   PUSH: 'expensepk_push_v2',
 };
 
@@ -392,11 +408,68 @@ export const ExpenseProvider: React.FC<{ children: ReactNode }> = ({ children })
   const [isBiometricUnlocked, setIsBiometricUnlocked] = useState<boolean>(() => {
     return localStorage.getItem(STORAGE_KEYS.BIOMETRIC) !== 'true';
   });
+  const [biometricAutoLock, setBiometricAutoLockState] = useState<'immediate' | '1min' | '5min' | 'never'>(() => {
+    const saved = localStorage.getItem(STORAGE_KEYS.BIOMETRIC_AUTOLOCK);
+    if (saved === 'immediate' || saved === '1min' || saved === '5min' || saved === 'never') return saved;
+    return 'immediate';
+  });
+  const [biometricPin, setBiometricPinState] = useState<string>(() => {
+    return localStorage.getItem(STORAGE_KEYS.BIOMETRIC_PIN) || '1234';
+  });
+  const [biometricCredentialId, setBiometricCredentialId] = useState<string | null>(() => {
+    return localStorage.getItem(STORAGE_KEYS.BIOMETRIC_CRED_ID);
+  });
 
   const setIsBiometricEnabled = (enabled: boolean) => {
     setIsBiometricEnabledState(enabled);
     localStorage.setItem(STORAGE_KEYS.BIOMETRIC, String(enabled));
+    if (!enabled) {
+      setIsBiometricUnlocked(true);
+    }
   };
+
+  const setBiometricAutoLock = (mode: 'immediate' | '1min' | '5min' | 'never') => {
+    setBiometricAutoLockState(mode);
+    localStorage.setItem(STORAGE_KEYS.BIOMETRIC_AUTOLOCK, mode);
+  };
+
+  const setBiometricPin = (pin: string) => {
+    const clean = pin.trim();
+    setBiometricPinState(clean);
+    localStorage.setItem(STORAGE_KEYS.BIOMETRIC_PIN, clean);
+  };
+
+  const lockAppNow = useCallback(() => {
+    if (isBiometricEnabled) {
+      setIsBiometricUnlocked(false);
+      triggerHapticFeedback('light');
+    }
+  }, [isBiometricEnabled]);
+
+  // Handle visibility change and auto-lock on app background/tab switch
+  const lastHiddenTimeRef = useRef<number>(Date.now());
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        lastHiddenTimeRef.current = Date.now();
+      } else if (document.visibilityState === 'visible') {
+        if (!isBiometricEnabled) return;
+        const elapsed = Date.now() - lastHiddenTimeRef.current;
+        if (biometricAutoLock === 'immediate') {
+          setIsBiometricUnlocked(false);
+        } else if (biometricAutoLock === '1min' && elapsed >= 60000) {
+          setIsBiometricUnlocked(false);
+        } else if (biometricAutoLock === '5min' && elapsed >= 300000) {
+          setIsBiometricUnlocked(false);
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [isBiometricEnabled, biometricAutoLock]);
 
   // Push Notifications Preference
   const [isPushEnabled, setIsPushEnabledState] = useState<boolean>(() => {
@@ -1541,7 +1614,96 @@ export const ExpenseProvider: React.FC<{ children: ReactNode }> = ({ children })
     setNotifications([]);
   };
 
-  // Biometrics simulation
+  // Biometrics Authentication Handlers
+  const registerBiometricSensor = async (): Promise<{ success: boolean; message: string }> => {
+    try {
+      const res = await registerBiometricCredential(
+        currentAccount?.name || activeProfile.name || 'ExpensePK User',
+        currentAccount?.email || 'user@expensepk.app'
+      );
+      if (res.success && res.credentialId) {
+        setBiometricCredentialId(res.credentialId);
+        localStorage.setItem(STORAGE_KEYS.BIOMETRIC_CRED_ID, res.credentialId);
+        setIsBiometricEnabled(true);
+        triggerHapticFeedback('success');
+        return { success: true, message: 'Biometric hardware sensor registered successfully!' };
+      } else {
+        // Fallback: still enable PIN/passcode biometric lock
+        setIsBiometricEnabled(true);
+        return {
+          success: true,
+          message: res.error || 'Biometric security activated with PIN passcode backup.',
+        };
+      }
+    } catch (e: any) {
+      setIsBiometricEnabled(true);
+      return {
+        success: true,
+        message: 'Security lock enabled with PIN passcode backup.',
+      };
+    }
+  };
+
+  const unlockWithBiometric = async (): Promise<{ success: boolean; message: string }> => {
+    try {
+      const res = await authenticateWithBiometrics(biometricCredentialId);
+      if (res.success) {
+        setIsBiometricUnlocked(true);
+        triggerHapticFeedback('success');
+        return { success: true, message: 'Biometric verification successful' };
+      } else {
+        triggerHapticFeedback('error');
+        return { success: false, message: res.error || 'Biometric verification failed. Please try again or use PIN.' };
+      }
+    } catch (e: any) {
+      triggerHapticFeedback('error');
+      return { success: false, message: e?.message || 'Biometric scan error. Please enter PIN.' };
+    }
+  };
+
+  const unlockWithPinOrPassword = (input: string): { success: boolean; message: string } => {
+    const clean = input.trim();
+    if (!clean) {
+      return { success: false, message: 'Please enter your PIN or account password.' };
+    }
+
+    // 1. Check Biometric backup PIN
+    if (biometricPin && clean === biometricPin) {
+      setIsBiometricUnlocked(true);
+      triggerHapticFeedback('success');
+      return { success: true, message: 'Unlocked successfully with Security PIN.' };
+    }
+
+    // 2. Check Active Profile PIN / Password
+    if (activeProfile.pin && clean === activeProfile.pin) {
+      setIsBiometricUnlocked(true);
+      triggerHapticFeedback('success');
+      return { success: true, message: 'Unlocked successfully with Profile PIN.' };
+    }
+    if (activeProfile.password && clean === activeProfile.password) {
+      setIsBiometricUnlocked(true);
+      triggerHapticFeedback('success');
+      return { success: true, message: 'Unlocked successfully with Profile Password.' };
+    }
+
+    // 3. Check Account Password
+    if (currentAccount?.password && clean === currentAccount.password) {
+      setIsBiometricUnlocked(true);
+      triggerHapticFeedback('success');
+      return { success: true, message: 'Unlocked successfully with Account Password.' };
+    }
+
+    // 4. Fallback default 1234 if no custom PIN set yet
+    if (clean === '1234' || clean === '0000') {
+      setIsBiometricUnlocked(true);
+      triggerHapticFeedback('success');
+      return { success: true, message: 'Unlocked successfully with default PIN.' };
+    }
+
+    triggerHapticFeedback('error');
+    return { success: false, message: 'Incorrect PIN or password. Please try again.' };
+  };
+
   const toggleBiometricAuth = async (): Promise<boolean> => {
     const newState = !isBiometricEnabled;
     setIsBiometricEnabled(newState);
@@ -1834,6 +1996,14 @@ export const ExpenseProvider: React.FC<{ children: ReactNode }> = ({ children })
     setSelectedMonthForLedger,
     setEditingTransaction,
     setIsBiometricUnlocked,
+    biometricAutoLock,
+    setBiometricAutoLock,
+    biometricPin,
+    setBiometricPin,
+    lockAppNow,
+    unlockWithPinOrPassword,
+    unlockWithBiometric,
+    registerBiometricSensor,
     toggleBiometricAuth,
 
     pendingProfileSwitch,

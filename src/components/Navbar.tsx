@@ -17,6 +17,8 @@ import {
   LogOut,
   Cloud,
   RefreshCw,
+  Fingerprint,
+  Lock,
 } from 'lucide-react';
 import { formatPKR } from '../lib/formatters';
 
@@ -40,6 +42,8 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenStartFresh }) => {
     theme,
     setTheme,
     toggleTheme,
+    isBiometricEnabled,
+    lockAppNow,
     isOnline,
     setIsSearchOpen,
     setIsAddTxOpen,
@@ -322,6 +326,18 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenStartFresh }) => {
               </div>
             )}
           </div>
+
+          {/* Quick Screen Lock Button when Biometric is Enabled */}
+          {isBiometricEnabled && (
+            <button
+              id="navbar-lock-screen-btn"
+              onClick={lockAppNow}
+              className="rounded-2xl bg-purple-500/10 hover:bg-purple-500/20 dark:bg-purple-950/40 dark:hover:bg-purple-900/60 border border-purple-500/20 p-2 text-purple-600 dark:text-purple-400 transition-all active:scale-95"
+              title="Lock ExpensePK Screen Now (Biometric Protection Active)"
+            >
+              <Fingerprint className="h-4 w-4" />
+            </button>
+          )}
 
           {/* Theme Mode Toggle (Dark / Light) */}
           <button

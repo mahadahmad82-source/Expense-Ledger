@@ -30,10 +30,13 @@ import {
   LogOut,
   UserCheck,
   Cloud,
-  RefreshCw
+  RefreshCw,
+  Fingerprint,
+  KeyRound,
 } from 'lucide-react';
 import { formatPKR } from '../lib/formatters';
 import { renderCategoryIcon } from '../lib/icons';
+import { checkBiometricSupport, BiometricAvailability } from '../lib/biometrics';
 
 interface SettingsViewProps {
   onOpenStartFresh?: () => void;
@@ -60,6 +63,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onOpenStartFresh }) 
     deleteCategory,
     isBiometricEnabled,
     setIsBiometricEnabled,
+    biometricAutoLock,
+    setBiometricAutoLock,
+    biometricPin,
+    setBiometricPin,
+    lockAppNow,
+    registerBiometricSensor,
     isPushEnabled,
     setIsPushEnabled,
     exportAllDataJSON,
@@ -77,6 +86,15 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onOpenStartFresh }) 
   } = useExpense();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Biometrics hardware detection
+  const [bioSupport, setBioSupport] = useState<BiometricAvailability | null>(null);
+  const [isEditingBackupPin, setIsEditingBackupPin] = useState(false);
+  const [backupPinInput, setBackupPinInput] = useState('');
+
+  React.useEffect(() => {
+    checkBiometricSupport().then(setBioSupport);
+  }, []);
 
   // Modal States
   const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
@@ -666,39 +684,188 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onOpenStartFresh }) 
         </div>
       </div>
 
-      {/* 5. Security & System Preferences */}
-      <div className="rounded-3xl bg-white/70 dark:bg-slate-900/60 border border-slate-200 dark:border-white/10 p-6 backdrop-blur-xl shadow-xl space-y-4 transition-colors">
-        <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-          <ShieldCheck className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-          <span>Security & System Preferences</span>
-        </h3>
-
-        <div className="divide-y divide-slate-200 dark:divide-white/5">
-          {/* Biometric Lock Toggle */}
-          <div className="flex items-center justify-between py-3">
+      {/* 5. Security & Biometric Preferences */}
+      <div className="rounded-3xl bg-white/70 dark:bg-slate-900/60 border border-slate-200 dark:border-white/10 p-6 backdrop-blur-xl shadow-xl space-y-5 transition-colors">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 dark:border-white/10 pb-4">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20">
+              <ShieldCheck className="h-5 w-5" />
+            </div>
             <div>
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white">Security & Biometrics</h3>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">Fingerprint, Face ID, Screen Lock & Auto-Protection</p>
+            </div>
+          </div>
+
+          {/* Hardware Detection Badge */}
+          {bioSupport && (
+            <span
+              className={`inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1 text-[11px] font-semibold border ${
+                bioSupport.isSupported
+                  ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20'
+                  : 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20'
+              }`}
+            >
+              <Fingerprint className="h-3.5 w-3.5" />
+              <span>{bioSupport.hasPlatformSensor ? 'Hardware Biometrics Ready' : 'WebAuthn Ready'}</span>
+            </span>
+          )}
+        </div>
+
+        <div className="divide-y divide-slate-200 dark:divide-white/5 space-y-4">
+          {/* Main Biometric / Passcode Switch */}
+          <div className="flex items-center justify-between pt-2">
+            <div className="pr-4">
               <h4 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-                <Lock className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
-                <span>Biometric / Screen Passcode Lock</span>
+                <Fingerprint className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                <span>Biometric / Screen Lock</span>
               </h4>
               <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                Require biometric fingerprint / FaceID or PIN unlock when opening app
+                Require Touch ID, Face ID, Android Fingerprint, or 4-digit PIN to open ExpensePK
               </p>
             </div>
 
-            <input
-              type="checkbox"
-              checked={isBiometricEnabled}
-              onChange={(e) => {
-                setIsBiometricEnabled(e.target.checked);
-                showAlert(`Biometric lock ${e.target.checked ? 'enabled' : 'disabled'}.`);
+            <button
+              type="button"
+              role="switch"
+              aria-checked={isBiometricEnabled}
+              onClick={async () => {
+                if (!isBiometricEnabled) {
+                  const res = await registerBiometricSensor();
+                  showAlert(res.message, 'success');
+                } else {
+                  setIsBiometricEnabled(false);
+                  showAlert('Biometric security lock disabled.');
+                }
               }}
-              className="h-5 w-5 accent-purple-600 cursor-pointer"
-            />
+              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                isBiometricEnabled ? 'bg-purple-600' : 'bg-slate-300 dark:bg-slate-700'
+              }`}
+            >
+              <span
+                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                  isBiometricEnabled ? 'translate-x-5' : 'translate-x-0'
+                }`}
+              />
+            </button>
           </div>
 
+          {/* Sub-controls when Biometric Lock is Active */}
+          {isBiometricEnabled && (
+            <div className="pt-4 space-y-4 animate-in fade-in">
+              {/* Quick Lock App Now Button */}
+              <div className="flex flex-wrap items-center justify-between gap-2 p-3 bg-purple-50/70 dark:bg-purple-950/20 rounded-2xl border border-purple-200 dark:border-purple-800/30">
+                <div>
+                  <h5 className="text-xs font-bold text-purple-900 dark:text-purple-200 flex items-center gap-1.5">
+                    <Lock className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
+                    <span>Test Lock Protection</span>
+                  </h5>
+                  <p className="text-[11px] text-purple-700/80 dark:text-purple-300/70">
+                    Immediately lock the screen to test your fingerprint scanner or backup PIN
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  id="lock-app-now-btn"
+                  onClick={() => {
+                    lockAppNow();
+                  }}
+                  className="flex items-center gap-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold px-3.5 py-2 shadow-md shadow-purple-600/30 transition-all active:scale-95"
+                >
+                  <Lock className="h-3.5 w-3.5" />
+                  <span>Lock App Now</span>
+                </button>
+              </div>
+
+              {/* Auto-Lock Timeout */}
+              <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+                <div>
+                  <h4 className="text-xs font-bold text-slate-900 dark:text-white">Auto-Lock on App Minimize / Tab Switch</h4>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                    Automatically lock when you switch tabs or minimize the browser window
+                  </p>
+                </div>
+
+                <select
+                  value={biometricAutoLock}
+                  onChange={(e) => {
+                    const val = e.target.value as any;
+                    setBiometricAutoLock(val);
+                    showAlert(`Auto-lock set to: ${val === 'immediate' ? 'Immediately on minimize' : val}`);
+                  }}
+                  className="rounded-xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 px-3 py-1.5 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                >
+                  <option value="immediate">Immediately on minimize</option>
+                  <option value="1min">After 1 minute of background</option>
+                  <option value="5min">After 5 minutes of background</option>
+                  <option value="never">Only on manual lock</option>
+                </select>
+              </div>
+
+              {/* 4-Digit Backup PIN */}
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-200/60 dark:border-white/5">
+                <div>
+                  <h4 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                    <KeyRound className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
+                    <span>Backup Security PIN</span>
+                  </h4>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                    Used if biometric hardware is unavailable (Current: <span className="font-mono font-bold text-purple-600 dark:text-purple-400">{biometricPin || '1234'}</span>)
+                  </p>
+                </div>
+
+                {!isEditingBackupPin ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setBackupPinInput(biometricPin || '1234');
+                      setIsEditingBackupPin(true);
+                    }}
+                    className="flex items-center gap-1 text-xs font-bold text-purple-600 dark:text-purple-400 hover:text-purple-500 bg-purple-50 dark:bg-purple-950/40 px-3 py-1.5 rounded-xl border border-purple-200 dark:border-purple-800/30"
+                  >
+                    <Edit2 className="h-3 w-3" />
+                    <span>Change PIN</span>
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="password"
+                      maxLength={6}
+                      value={backupPinInput}
+                      onChange={(e) => setBackupPinInput(e.target.value.replace(/\D/g, ''))}
+                      placeholder="4-digit PIN"
+                      className="w-24 rounded-xl bg-slate-100 dark:bg-white/5 border border-purple-500 px-2 py-1 text-center font-mono text-xs font-bold text-slate-900 dark:text-white focus:outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (backupPinInput.length >= 4) {
+                          setBiometricPin(backupPinInput);
+                          setIsEditingBackupPin(false);
+                          showAlert(`Security PIN updated to ${backupPinInput}`);
+                        } else {
+                          showAlert('PIN must be at least 4 digits', 'error');
+                        }
+                      }}
+                      className="rounded-xl bg-purple-600 px-2.5 py-1 text-xs font-bold text-white hover:bg-purple-500"
+                    >
+                      Save
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingBackupPin(false)}
+                      className="rounded-xl bg-slate-200 dark:bg-white/10 px-2.5 py-1 text-xs font-medium text-slate-700 dark:text-slate-300"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Push Notifications Toggle */}
-          <div className="flex items-center justify-between py-3">
+          <div className="flex items-center justify-between pt-3">
             <div>
               <h4 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
                 <Bell className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-400" />
@@ -721,7 +888,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onOpenStartFresh }) 
           </div>
 
           {/* Currency */}
-          <div className="flex items-center justify-between py-3">
+          <div className="flex items-center justify-between pt-3">
             <div>
               <h4 className="text-xs font-bold text-slate-900 dark:text-white">Default Currency</h4>
               <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
