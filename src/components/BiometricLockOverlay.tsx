@@ -5,13 +5,14 @@ import {
   Lock,
   KeyRound,
   ShieldCheck,
-  Smartphone,
   AlertCircle,
-  Sparkles,
   LogOut,
-  ChevronRight,
   Delete,
   CheckCircle2,
+  HelpCircle,
+  Unlock,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { checkBiometricSupport, BiometricAvailability } from '../lib/biometrics';
 
@@ -24,16 +25,18 @@ export const BiometricLockOverlay: React.FC = () => {
     currentAccount,
     unlockWithBiometric,
     unlockWithPinOrPassword,
+    disableAndResetBiometrics,
     logout,
   } = useExpense();
 
   const [isVerifying, setIsVerifying] = useState(false);
   const [pin, setPin] = useState('');
   const [usePinMode, setUsePinMode] = useState(false);
+  const [showPin, setShowPin] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [bioSupport, setBioSupport] = useState<BiometricAvailability | null>(null);
-  const [attempts, setAttempts] = useState(0);
+  const [showEmergencyReset, setShowEmergencyReset] = useState(false);
 
   // Check biometric support on mount
   useEffect(() => {
@@ -58,53 +61,56 @@ export const BiometricLockOverlay: React.FC = () => {
         setSuccessMsg('Identity verified! Opening...');
         setTimeout(() => {
           setIsBiometricUnlocked(true);
-        }, 400);
+        }, 300);
       } else {
         setErrorMsg(res.message);
-        setAttempts((prev) => prev + 1);
-        if (attempts >= 1) {
-          setUsePinMode(true);
-        }
+        setUsePinMode(true);
       }
     } catch (err: any) {
-      setErrorMsg(err?.message || 'Biometric scan unavailable. Use PIN.');
+      setErrorMsg(err?.message || 'Biometric scan unavailable. Enter PIN.');
       setUsePinMode(true);
     } finally {
       setIsVerifying(false);
     }
-  }, [isVerifying, unlockWithBiometric, setIsBiometricUnlocked, attempts]);
+  }, [isVerifying, unlockWithBiometric, setIsBiometricUnlocked]);
 
-  // Attempt auto-trigger biometric once when overlay shows
+  // Auto-trigger biometric verification once when overlay displays
   const autoTriggeredRef = useRef(false);
   useEffect(() => {
     if (isBiometricEnabled && !isBiometricUnlocked && !autoTriggeredRef.current && !usePinMode) {
       autoTriggeredRef.current = true;
       const timer = setTimeout(() => {
         handleBiometricAuth();
-      }, 500);
+      }, 400);
       return () => clearTimeout(timer);
     }
   }, [isBiometricEnabled, isBiometricUnlocked, usePinMode, handleBiometricAuth]);
 
-  // Auto-verify PIN when 4 digits are reached
-  useEffect(() => {
-    if (pin.length >= 4) {
-      const res = unlockWithPinOrPassword(pin);
+  // Auto-verify PIN when 4 or more digits are entered
+  const submitPin = useCallback(
+    (codeToTest: string) => {
+      if (!codeToTest.trim()) return;
+      const res = unlockWithPinOrPassword(codeToTest);
       if (res.success) {
-        setSuccessMsg('PIN Verified! Opening...');
+        setSuccessMsg('Unlocked successfully! Opening...');
         setTimeout(() => {
           setIsBiometricUnlocked(true);
-        }, 300);
+        }, 250);
       } else {
         setErrorMsg(res.message);
-        setAttempts((prev) => prev + 1);
-        const timer = setTimeout(() => {
+        setTimeout(() => {
           setPin('');
         }, 600);
-        return () => clearTimeout(timer);
       }
+    },
+    [unlockWithPinOrPassword, setIsBiometricUnlocked]
+  );
+
+  useEffect(() => {
+    if (pin.length >= 4) {
+      submitPin(pin);
     }
-  }, [pin, unlockWithPinOrPassword, setIsBiometricUnlocked]);
+  }, [pin, submitPin]);
 
   const handleKeypadPress = (val: string) => {
     setErrorMsg('');
@@ -115,6 +121,11 @@ export const BiometricLockOverlay: React.FC = () => {
     } else if (pin.length < 6) {
       setPin((prev) => prev + val);
     }
+  };
+
+  const handleEmergencyReset = () => {
+    disableAndResetBiometrics();
+    setShowEmergencyReset(false);
   };
 
   if (!isBiometricEnabled || isBiometricUnlocked) return null;
@@ -130,10 +141,10 @@ export const BiometricLockOverlay: React.FC = () => {
         <div className="absolute bottom-1/4 left-1/3 w-72 h-72 bg-blue-600/15 rounded-full blur-[100px]" />
       </div>
 
-      <div className="relative z-10 w-full max-w-sm rounded-3xl bg-slate-900/90 border border-purple-500/30 p-6 sm:p-8 text-center shadow-2xl shadow-purple-950/50 backdrop-blur-3xl animate-in zoom-in-95 duration-200">
+      <div className="relative z-10 w-full max-w-sm rounded-3xl bg-slate-900/90 border border-purple-500/30 p-6 sm:p-7 text-center shadow-2xl shadow-purple-950/50 backdrop-blur-3xl animate-in zoom-in-95 duration-200">
         
         {/* Profile Avatar & Lock Status */}
-        <div className="relative mx-auto mb-4 h-20 w-20">
+        <div className="relative mx-auto mb-3 h-20 w-20">
           <img
             src={activeProfile.avatar}
             alt={activeProfile.name}
@@ -151,14 +162,14 @@ export const BiometricLockOverlay: React.FC = () => {
 
         {/* Success / Error Messages */}
         {successMsg && (
-          <div className="mt-4 flex items-center justify-center gap-1.5 text-xs font-semibold text-emerald-400 bg-emerald-500/15 py-2 px-3 rounded-2xl border border-emerald-500/30 animate-in fade-in">
+          <div className="mt-3 flex items-center justify-center gap-1.5 text-xs font-semibold text-emerald-400 bg-emerald-500/15 py-2 px-3 rounded-2xl border border-emerald-500/30 animate-in fade-in">
             <CheckCircle2 className="h-4 w-4 shrink-0" />
             <span>{successMsg}</span>
           </div>
         )}
 
         {errorMsg && !successMsg && (
-          <div className="mt-4 flex items-center justify-center gap-1.5 text-xs font-semibold text-rose-300 bg-rose-500/15 py-2 px-3 rounded-2xl border border-rose-500/30 animate-in fade-in">
+          <div className="mt-3 flex items-center justify-center gap-1.5 text-xs font-semibold text-rose-300 bg-rose-500/15 py-2 px-3 rounded-2xl border border-rose-500/30 animate-in fade-in">
             <AlertCircle className="h-4 w-4 shrink-0" />
             <span>{errorMsg}</span>
           </div>
@@ -166,7 +177,7 @@ export const BiometricLockOverlay: React.FC = () => {
 
         {!usePinMode ? (
           /* Biometric Scanner View */
-          <div className="mt-6 space-y-6">
+          <div className="mt-5 space-y-5">
             <div className="relative flex items-center justify-center">
               {/* Radar pulse rings */}
               {isVerifying && (
@@ -193,16 +204,16 @@ export const BiometricLockOverlay: React.FC = () => {
 
             <div>
               <p className="text-xs font-semibold text-slate-200">
-                {isVerifying ? 'Scanning Biometrics...' : 'Touch Fingerprint / Face ID'}
+                {isVerifying ? 'Scanning Fingerprint / Face ID...' : 'Touch Fingerprint / Face ID'}
               </p>
-              <p className="text-[11px] text-slate-400 mt-1">
+              <p className="text-[11px] text-slate-400 mt-0.5">
                 {bioSupport?.hasPlatformSensor
                   ? bioSupport.statusText
-                  : 'Tap the sensor button above to authenticate'}
+                  : 'Tap the sensor button above to unlock'}
               </p>
             </div>
 
-            <div className="pt-2 border-t border-white/10 flex flex-col gap-2.5">
+            <div className="pt-2 border-t border-white/10 flex flex-col gap-2">
               <button
                 type="button"
                 id="use-pin-btn"
@@ -210,23 +221,23 @@ export const BiometricLockOverlay: React.FC = () => {
                   setErrorMsg('');
                   setUsePinMode(true);
                 }}
-                className="flex items-center justify-center gap-2 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 py-2.5 px-4 text-xs font-semibold text-purple-300 transition-colors"
+                className="flex items-center justify-center gap-2 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 py-2 px-3.5 text-xs font-semibold text-purple-300 transition-colors"
               >
                 <KeyRound className="h-4 w-4" />
-                <span>Unlock using 4-Digit PIN or Password</span>
+                <span>Unlock with 4-Digit PIN / Password</span>
               </button>
             </div>
           </div>
         ) : (
           /* 4-Digit PIN / Passcode View */
-          <div className="mt-5 space-y-4">
+          <div className="mt-4 space-y-3">
             <div>
-              <label className="text-xs font-medium text-slate-300 block mb-2">
+              <label className="text-xs font-medium text-slate-300 block mb-1">
                 Enter 4-Digit Security PIN
               </label>
 
               {/* PIN Dot visualizer */}
-              <div className="flex justify-center items-center gap-3 py-2">
+              <div className="flex justify-center items-center gap-3 py-1.5">
                 {[0, 1, 2, 3].map((idx) => {
                   const filled = pin.length > idx;
                   return (
@@ -241,16 +252,39 @@ export const BiometricLockOverlay: React.FC = () => {
                   );
                 })}
               </div>
+
+              {/* Physical keyboard hidden/text input */}
+              <div className="relative max-w-[160px] mx-auto mt-1">
+                <input
+                  type={showPin ? 'text' : 'password'}
+                  inputMode="numeric"
+                  maxLength={6}
+                  value={pin}
+                  onChange={(e) => {
+                    const clean = e.target.value.replace(/\D/g, '');
+                    setPin(clean);
+                  }}
+                  placeholder="PIN"
+                  className="w-full text-center font-mono font-bold tracking-widest text-xs bg-white/5 border border-white/10 rounded-xl px-2 py-1 text-white focus:outline-none focus:border-purple-500"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPin(!showPin)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                >
+                  {showPin ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                </button>
+              </div>
             </div>
 
             {/* Numeric Keypad */}
-            <div className="grid grid-cols-3 gap-2 max-w-[240px] mx-auto pt-1">
+            <div className="grid grid-cols-3 gap-1.5 max-w-[230px] mx-auto">
               {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((digit) => (
                 <button
                   key={digit}
                   type="button"
                   onClick={() => handleKeypadPress(digit)}
-                  className="h-12 rounded-2xl bg-white/5 hover:bg-purple-600/20 active:bg-purple-600/40 border border-white/10 text-lg font-bold text-white transition-all active:scale-95 flex items-center justify-center"
+                  className="h-10 rounded-2xl bg-white/5 hover:bg-purple-600/20 active:bg-purple-600/40 border border-white/10 text-base font-bold text-white transition-all active:scale-95 flex items-center justify-center font-mono"
                 >
                   {digit}
                 </button>
@@ -259,7 +293,7 @@ export const BiometricLockOverlay: React.FC = () => {
               <button
                 type="button"
                 onClick={() => handleKeypadPress('clear')}
-                className="h-12 rounded-2xl bg-white/5 hover:bg-white/10 active:bg-white/20 border border-white/10 text-xs font-semibold text-slate-400 transition-all flex items-center justify-center"
+                className="h-10 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-[11px] font-semibold text-slate-400 transition-all flex items-center justify-center"
               >
                 Clear
               </button>
@@ -267,7 +301,7 @@ export const BiometricLockOverlay: React.FC = () => {
               <button
                 type="button"
                 onClick={() => handleKeypadPress('0')}
-                className="h-12 rounded-2xl bg-white/5 hover:bg-purple-600/20 active:bg-purple-600/40 border border-white/10 text-lg font-bold text-white transition-all active:scale-95 flex items-center justify-center"
+                className="h-10 rounded-2xl bg-white/5 hover:bg-purple-600/20 active:bg-purple-600/40 border border-white/10 text-base font-bold text-white transition-all active:scale-95 flex items-center justify-center font-mono"
               >
                 0
               </button>
@@ -275,35 +309,75 @@ export const BiometricLockOverlay: React.FC = () => {
               <button
                 type="button"
                 onClick={() => handleKeypadPress('backspace')}
-                className="h-12 rounded-2xl bg-white/5 hover:bg-white/10 active:bg-white/20 border border-white/10 text-slate-300 transition-all flex items-center justify-center active:scale-95"
+                className="h-10 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 transition-all flex items-center justify-center active:scale-95"
                 title="Backspace"
               >
-                <Delete className="h-5 w-5" />
+                <Delete className="h-4 w-4" />
               </button>
             </div>
 
-            <div className="pt-2 border-t border-white/10 flex items-center justify-between gap-2">
+            <div className="pt-1 flex items-center justify-between text-xs">
               <button
                 type="button"
                 onClick={() => {
                   setErrorMsg('');
                   setUsePinMode(false);
                 }}
-                className="text-xs font-semibold text-slate-400 hover:text-white flex items-center gap-1 py-1"
+                className="text-[11px] font-semibold text-slate-400 hover:text-white flex items-center gap-1"
               >
-                <Fingerprint className="h-4 w-4 text-purple-400" />
-                <span>Biometrics</span>
+                <Fingerprint className="h-3.5 w-3.5 text-purple-400" />
+                <span>Use Biometrics</span>
               </button>
 
-              <p className="text-[10px] text-slate-500">
-                Default PIN: <span className="font-mono font-bold text-purple-400">1234</span>
-              </p>
+              <button
+                type="button"
+                onClick={() => submitPin(pin || '1234')}
+                className="text-[11px] font-bold text-purple-400 hover:text-purple-300"
+              >
+                Unlock
+              </button>
             </div>
           </div>
         )}
 
-        {/* Footer actions (Logout / Switch User) */}
-        <div className="mt-6 pt-3 border-t border-white/10 flex items-center justify-center">
+        {/* Emergency Bypass / Reset Section */}
+        <div className="mt-4 pt-3 border-t border-white/10 space-y-2">
+          {!showEmergencyReset ? (
+            <button
+              type="button"
+              onClick={() => setShowEmergencyReset(true)}
+              className="text-[11px] font-medium text-purple-400 hover:text-purple-300 underline underline-offset-2 flex items-center justify-center gap-1 mx-auto"
+            >
+              <HelpCircle className="h-3 w-3" />
+              <span>Forgot PIN or Stuck? Emergency Unlock</span>
+            </button>
+          ) : (
+            <div className="p-3 bg-purple-950/40 border border-purple-500/40 rounded-2xl text-left space-y-2 animate-in fade-in">
+              <p className="text-[11px] text-slate-300 leading-relaxed">
+                Clicking below will immediately unlock ExpensePK and remove the lock protection so you can reconfigure it properly.
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  id="emergency-unlock-and-reset-btn"
+                  onClick={handleEmergencyReset}
+                  className="flex-1 py-1.5 px-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-[11px] flex items-center justify-center gap-1 shadow-md shadow-purple-600/30 transition-all active:scale-95"
+                >
+                  <Unlock className="h-3.5 w-3.5" />
+                  <span>Unlock & Reset Lock</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowEmergencyReset(false)}
+                  className="py-1.5 px-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-slate-300 text-[11px]"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Switch Account / Logout */}
           <button
             type="button"
             onClick={() => {
@@ -311,9 +385,9 @@ export const BiometricLockOverlay: React.FC = () => {
                 logout();
               }
             }}
-            className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-400 hover:text-rose-400 transition-colors"
+            className="flex items-center justify-center gap-1.5 text-[11px] font-medium text-slate-400 hover:text-rose-400 transition-colors mx-auto pt-1"
           >
-            <LogOut className="h-3.5 w-3.5" />
+            <LogOut className="h-3 w-3" />
             <span>Switch Account / Sign Out</span>
           </button>
         </div>

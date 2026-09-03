@@ -92,6 +92,9 @@ interface ExpenseContextType {
   unlockWithPinOrPassword: (input: string) => { success: boolean; message: string };
   unlockWithBiometric: () => Promise<{ success: boolean; message: string }>;
   registerBiometricSensor: () => Promise<{ success: boolean; message: string }>;
+  disableAndResetBiometrics: () => void;
+  isBiometricSetupOpen: boolean;
+  setIsBiometricSetupOpen: (open: boolean) => void;
   isPushEnabled: boolean;
   setIsPushEnabled: (enabled: boolean) => void;
   
@@ -241,9 +244,14 @@ function loadAccountData(accountId: string): AccountFinancialData {
   if (savedAccountData) {
     try {
       const parsed = JSON.parse(savedAccountData);
+      const cleanProfiles: UserProfile[] = (parsed.profiles || INITIAL_PROFILES).map((p: any) => ({
+        ...p,
+        password: undefined,
+        pin: undefined,
+      }));
       return {
-        profiles: parsed.profiles || INITIAL_PROFILES,
-        activeProfileId: parsed.activeProfileId || (parsed.profiles?.[0]?.id || 'prof-personal'),
+        profiles: cleanProfiles,
+        activeProfileId: parsed.activeProfileId || (cleanProfiles?.[0]?.id || 'prof-personal'),
         wallets: parsed.wallets || INITIAL_WALLETS,
         categories: parsed.categories || DEFAULT_CATEGORIES,
         transactions: parsed.transactions || INITIAL_TRANSACTIONS,
@@ -270,7 +278,11 @@ function loadAccountData(accountId: string): AccountFinancialData {
     const legacyBills = localStorage.getItem(STORAGE_KEYS.BILLS);
     const legacyLedgers = localStorage.getItem(STORAGE_KEYS.LEDGERS);
 
-    const loadedProfiles: UserProfile[] = legacyProfiles ? JSON.parse(legacyProfiles) : INITIAL_PROFILES;
+    const loadedProfiles: UserProfile[] = (legacyProfiles ? JSON.parse(legacyProfiles) : INITIAL_PROFILES).map((p: any) => ({
+      ...p,
+      password: undefined,
+      pin: undefined,
+    }));
     const loadedActiveProfileId: string = legacyActiveProfile || loadedProfiles[0]?.id || 'prof-personal';
     const loadedWallets: Wallet[] = legacyWallets ? JSON.parse(legacyWallets) : INITIAL_WALLETS;
     const loadedCategories: Category[] = legacyCategories ? JSON.parse(legacyCategories) : DEFAULT_CATEGORIES;
@@ -419,6 +431,7 @@ export const ExpenseProvider: React.FC<{ children: ReactNode }> = ({ children })
   const [biometricCredentialId, setBiometricCredentialId] = useState<string | null>(() => {
     return localStorage.getItem(STORAGE_KEYS.BIOMETRIC_CRED_ID);
   });
+  const [isBiometricSetupOpen, setIsBiometricSetupOpen] = useState(false);
 
   const setIsBiometricEnabled = (enabled: boolean) => {
     setIsBiometricEnabledState(enabled);
@@ -437,6 +450,21 @@ export const ExpenseProvider: React.FC<{ children: ReactNode }> = ({ children })
     const clean = pin.trim();
     setBiometricPinState(clean);
     localStorage.setItem(STORAGE_KEYS.BIOMETRIC_PIN, clean);
+  };
+
+  const disableAndResetBiometrics = () => {
+    setIsBiometricEnabledState(false);
+    setIsBiometricUnlocked(true);
+    setBiometricPinState('1234');
+    setBiometricCredentialId(null);
+    localStorage.removeItem(STORAGE_KEYS.BIOMETRIC);
+    localStorage.removeItem(STORAGE_KEYS.BIOMETRIC_PIN);
+    localStorage.removeItem(STORAGE_KEYS.BIOMETRIC_CRED_ID);
+    localStorage.removeItem(STORAGE_KEYS.BIOMETRIC_AUTOLOCK);
+    // Remove profile code locks from all profiles
+    setProfiles((prev) => prev.map((p) => ({ ...p, password: undefined, pin: undefined })));
+    setPendingProfileSwitch(null);
+    triggerHapticFeedback('success');
   };
 
   const lockAppNow = useCallback(() => {
@@ -1158,16 +1186,10 @@ export const ExpenseProvider: React.FC<{ children: ReactNode }> = ({ children })
 
   // Profile Actions
   const switchProfile = (profileId: string) => {
-    const target = profiles.find(p => p.id === profileId);
+    const target = profiles.find((p) => p.id === profileId);
     if (!target) return;
-    if (target.id === activeProfileId) return;
-
-    if (target.password && target.password.trim().length > 0) {
-      setPendingProfileSwitch(target);
-      return;
-    }
-
     setActiveProfileId(profileId);
+    setPendingProfileSwitch(null);
   };
 
   const verifyAndSwitchProfile = (profileId: string, passwordAttempt: string): { success: boolean; message: string } => {
@@ -2005,6 +2027,9 @@ export const ExpenseProvider: React.FC<{ children: ReactNode }> = ({ children })
     unlockWithBiometric,
     registerBiometricSensor,
     toggleBiometricAuth,
+    disableAndResetBiometrics,
+    isBiometricSetupOpen,
+    setIsBiometricSetupOpen,
 
     pendingProfileSwitch,
     setPendingProfileSwitch,

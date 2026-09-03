@@ -69,6 +69,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onOpenStartFresh }) 
     setBiometricPin,
     lockAppNow,
     registerBiometricSensor,
+    disableAndResetBiometrics,
+    setIsBiometricSetupOpen,
     isPushEnabled,
     setIsPushEnabled,
     exportAllDataJSON,
@@ -713,12 +715,54 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onOpenStartFresh }) 
         </div>
 
         <div className="divide-y divide-slate-200 dark:divide-white/5 space-y-4">
+          {/* Top Wizard Banner */}
+          <div className="pt-1 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 rounded-2xl bg-purple-500/10 border border-purple-500/20">
+            <div>
+              <h4 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                <Sparkles className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                <span>Complete Biometric & PIN Configuration Wizard</span>
+              </h4>
+              <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-0.5">
+                Guided 3-step setup to register your fingerprint sensor, set a backup 4-digit PIN, and choose auto-lock preferences.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                id="open-biometric-wizard-btn"
+                onClick={() => setIsBiometricSetupOpen(true)}
+                className="flex items-center gap-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold px-4 py-2 shadow-lg shadow-purple-600/30 transition-all active:scale-95"
+              >
+                <Fingerprint className="h-4 w-4" />
+                <span>{isBiometricEnabled ? 'Reconfigure Security' : 'Start Guided Setup'}</span>
+              </button>
+
+              {isBiometricEnabled && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (confirm('Disable and remove all lock protection? You can re-enable anytime.')) {
+                      disableAndResetBiometrics();
+                      showAlert('Security locks removed.');
+                    }
+                  }}
+                  className="flex items-center gap-1 text-[11px] font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 p-2 rounded-xl transition-colors"
+                  title="Remove all security lock restrictions"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  <span>Remove Lock</span>
+                </button>
+              )}
+            </div>
+          </div>
+
           {/* Main Biometric / Passcode Switch */}
-          <div className="flex items-center justify-between pt-2">
+          <div className="flex items-center justify-between pt-3">
             <div className="pr-4">
               <h4 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
                 <Fingerprint className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-                <span>Biometric / Screen Lock</span>
+                <span>Biometric / Screen Lock Active</span>
               </h4>
               <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                 Require Touch ID, Face ID, Android Fingerprint, or 4-digit PIN to open ExpensePK
@@ -731,10 +775,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onOpenStartFresh }) 
               aria-checked={isBiometricEnabled}
               onClick={async () => {
                 if (!isBiometricEnabled) {
-                  const res = await registerBiometricSensor();
-                  showAlert(res.message, 'success');
+                  setIsBiometricSetupOpen(true);
                 } else {
-                  setIsBiometricEnabled(false);
+                  disableAndResetBiometrics();
                   showAlert('Biometric security lock disabled.');
                 }
               }}

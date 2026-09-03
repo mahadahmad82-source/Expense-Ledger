@@ -12,6 +12,7 @@ import { BiometricLockOverlay } from './components/BiometricLockOverlay';
 import { StartFreshModal } from './components/StartFreshModal';
 import { AccountSwitcherModal } from './components/AccountSwitcherModal';
 import { ProfilePasswordModal } from './components/ProfilePasswordModal';
+import { BiometricSetupModal } from './components/BiometricSetupModal';
 
 // Views
 import { LoginView } from './views/LoginView';
@@ -27,7 +28,15 @@ import { SmartTipsView } from './views/SmartTipsView';
 import { SettingsView } from './views/SettingsView';
 
 const MainAppContent: React.FC = () => {
-  const { currentAccount, isAccountModalOpen, setIsAccountModalOpen, activeTab, theme } = useExpense();
+  const {
+    currentAccount,
+    isAccountModalOpen,
+    setIsAccountModalOpen,
+    activeTab,
+    theme,
+    isBiometricSetupOpen,
+    setIsBiometricSetupOpen,
+  } = useExpense();
   const [isStartFreshOpen, setIsStartFreshOpen] = useState(false);
 
   // If no account is logged in, show the Login/Registration page
@@ -99,6 +108,10 @@ const MainAppContent: React.FC = () => {
       <StartFreshModal isOpen={isStartFreshOpen} onClose={() => setIsStartFreshOpen(false)} />
       <AccountSwitcherModal isOpen={isAccountModalOpen} onClose={() => setIsAccountModalOpen(false)} />
       <ProfilePasswordModal />
+      <BiometricSetupModal
+        isOpen={isBiometricSetupOpen}
+        onClose={() => setIsBiometricSetupOpen(false)}
+      />
     </div>
   );
 };
