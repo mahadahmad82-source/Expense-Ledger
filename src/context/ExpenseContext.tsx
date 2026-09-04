@@ -244,11 +244,10 @@ function loadAccountData(accountId: string): AccountFinancialData {
   if (savedAccountData) {
     try {
       const parsed = JSON.parse(savedAccountData);
-      const cleanProfiles: UserProfile[] = (parsed.profiles || INITIAL_PROFILES).map((p: any) => ({
-        ...p,
-        password: undefined,
-        pin: undefined,
-      }));
+      const cleanProfiles: UserProfile[] = (parsed.profiles || INITIAL_PROFILES).map((p: any) => {
+        const { password, pin, ...rest } = p;
+        return rest as UserProfile;
+      });
       return {
         profiles: cleanProfiles,
         activeProfileId: parsed.activeProfileId || (cleanProfiles?.[0]?.id || 'prof-personal'),
@@ -278,11 +277,10 @@ function loadAccountData(accountId: string): AccountFinancialData {
     const legacyBills = localStorage.getItem(STORAGE_KEYS.BILLS);
     const legacyLedgers = localStorage.getItem(STORAGE_KEYS.LEDGERS);
 
-    const loadedProfiles: UserProfile[] = (legacyProfiles ? JSON.parse(legacyProfiles) : INITIAL_PROFILES).map((p: any) => ({
-      ...p,
-      password: undefined,
-      pin: undefined,
-    }));
+    const loadedProfiles: UserProfile[] = (legacyProfiles ? JSON.parse(legacyProfiles) : INITIAL_PROFILES).map((p: any) => {
+      const { password, pin, ...rest } = p;
+      return rest as UserProfile;
+    });
     const loadedActiveProfileId: string = legacyActiveProfile || loadedProfiles[0]?.id || 'prof-personal';
     const loadedWallets: Wallet[] = legacyWallets ? JSON.parse(legacyWallets) : INITIAL_WALLETS;
     const loadedCategories: Category[] = legacyCategories ? JSON.parse(legacyCategories) : DEFAULT_CATEGORIES;
@@ -462,7 +460,10 @@ export const ExpenseProvider: React.FC<{ children: ReactNode }> = ({ children })
     localStorage.removeItem(STORAGE_KEYS.BIOMETRIC_CRED_ID);
     localStorage.removeItem(STORAGE_KEYS.BIOMETRIC_AUTOLOCK);
     // Remove profile code locks from all profiles
-    setProfiles((prev) => prev.map((p) => ({ ...p, password: undefined, pin: undefined })));
+    setProfiles((prev) => prev.map((p) => {
+      const { password, pin, ...rest } = p;
+      return rest as UserProfile;
+    }));
     setPendingProfileSwitch(null);
     triggerHapticFeedback('success');
   };

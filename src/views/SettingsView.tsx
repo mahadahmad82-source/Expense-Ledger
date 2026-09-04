@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useExpense } from '../context/ExpenseContext';
 import { WalletType, ThemeMode } from '../types';
 import {
@@ -94,7 +94,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onOpenStartFresh }) 
   const [isEditingBackupPin, setIsEditingBackupPin] = useState(false);
   const [backupPinInput, setBackupPinInput] = useState('');
 
-  React.useEffect(() => {
+  useEffect(() => {
     checkBiometricSupport().then(setBioSupport);
   }, []);
 

@@ -101,6 +101,31 @@ export function getFirebaseMetadata() {
 }
 
 /**
+ * Recursively remove all `undefined` values from an object/array so Firestore setDoc never fails
+ */
+export function sanitizeForFirestore<T>(data: T): T {
+  if (data === undefined || data === null) {
+    return (data === undefined ? null : data) as unknown as T;
+  }
+  if (Array.isArray(data)) {
+    return data.map((item) => sanitizeForFirestore(item)) as unknown as T;
+  }
+  if (typeof data === 'object') {
+    if (data instanceof Date) {
+      return data.toISOString() as unknown as T;
+    }
+    const cleanObj: Record<string, any> = {};
+    for (const [key, value] of Object.entries(data)) {
+      if (value !== undefined) {
+        cleanObj[key] = sanitizeForFirestore(value);
+      }
+    }
+    return cleanObj as T;
+  }
+  return data;
+}
+
+/**
  * Save / Push account financial data to Firebase Firestore
  */
 export async function pushAccountDataToFirebase(
@@ -117,7 +142,7 @@ export async function pushAccountDataToFirebase(
     const docRef = doc(db, 'accountData', cleanAccountId);
     
     // Sanitize any undefined values before sending to Firestore
-    const payload = {
+    const rawPayload = {
       accountId: cleanAccountId,
       updatedAt: new Date().toISOString(),
       profiles: data.profiles || [],
@@ -130,6 +155,9 @@ export async function pushAccountDataToFirebase(
       bills: data.bills || [],
       ledgers: data.ledgers || [],
     };
+
+    // Deep clean all undefined fields recursively and safely
+    const payload = JSON.parse(JSON.stringify(sanitizeForFirestore(rawPayload)));
 
     await setDoc(docRef, payload, { merge: true });
     return { success: true };
@@ -234,10 +262,12 @@ export async function pushUserAccountToFirebase(account: UserAccount): Promise<v
 
   try {
     const docRef = doc(db, 'accounts', account.id);
-    await setDoc(docRef, {
+    const rawAccount = {
       ...account,
       syncedAt: new Date().toISOString()
-    }, { merge: true });
+    };
+    const cleanAccount = JSON.parse(JSON.stringify(sanitizeForFirestore(rawAccount)));
+    await setDoc(docRef, cleanAccount, { merge: true });
   } catch (err) {
     console.error('Failed to push user account to Firebase:', err);
   }
